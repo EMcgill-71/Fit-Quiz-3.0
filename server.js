@@ -1,6 +1,6 @@
 // server.js — ZipFit Find-My-Fit on Railway.
 //
-// Serves the static quiz from /public and exposes ONE backend endpoint:
+// Serves the static quiz from the root directory and exposes ONE backend endpoint:
 //   POST /api/fit-quiz/submit
 // which receives the lead + quiz answers and fans them out to:
 //   • Shopify Admin API   (creates/updates a customer, tags with the match)
@@ -50,7 +50,7 @@ app.use((req, res, next) => {
 });
 
 // ── Static frontend ───────────────────────────────────────────────────────
-app.use(express.static(join(__dirname, 'public'), {
+app.use(express.static(join(__dirname, '.'), {
   // Most files change with each deploy — keep cache short so users get updates.
   maxAge: '5m',
   // Tiny SPA, so let index resolve trailing-slash requests cleanly.
