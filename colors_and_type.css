@@ -1,0 +1,261 @@
+/* ZipFit Design System — Core tokens
+ * Source: Zipfit Brand Standards FINAL + zipfit.com
+ * Primary typeface: Gilroy (substituted with Google Fonts "Outfit" for web availability — see README)
+ * Website body/UI font: Inter (per user note)
+ */
+
+/* ---- GILROY SUBSTITUTE + INTER (website) ---- */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  /* ====== BRAND COLORS ====== */
+  /* Primary — signature action color (buttons, links, focus) */
+  --zf-red: #EF4623;
+  --zf-red-dark: #C8371A; /* hover derived */
+
+  /* Foundationals — the canvas */
+  --zf-black: #272727;   /* PMS Neutral Black C */
+  --zf-white: #FFFFFF;
+  --zf-bg-accent: #F1EDE7; /* website warm neutral bg */
+
+  /* Gradient accents (use individually; never alongside the rainbow) */
+  --zf-yellow: #FBCF21;
+  --zf-green:  #68BD46;
+  --zf-aqua:   #5DC7D1;
+  --zf-blue:   #2F438F;
+  --zf-purple: #952A7D;
+
+  /* Signature rainbow gradient (logo + hero moments only) */
+  --zf-gradient-rainbow: linear-gradient(
+    90deg,
+    var(--zf-red)    0%,
+    var(--zf-yellow) 20%,
+    var(--zf-green)  40%,
+    var(--zf-aqua)   60%,
+    var(--zf-blue)   80%,
+    var(--zf-purple) 100%
+  );
+
+  /* ====== SEMANTIC COLOR TOKENS ====== */
+  --fg-1: var(--zf-black);                   /* primary text */
+  --fg-2: #4A4A4A;                           /* secondary text */
+  --fg-3: #7A7670;                           /* tertiary / captions */
+  --fg-inverse: var(--zf-white);
+
+  --bg-1: var(--zf-white);                   /* default surface */
+  --bg-2: var(--zf-bg-accent);               /* warm neutral section */
+  --bg-3: #E8E2D9;                           /* slightly deeper warm */
+  --bg-inverse: var(--zf-black);
+
+  --border-1: rgba(39,39,39,0.12);
+  --border-2: rgba(39,39,39,0.22);
+  --divider: rgba(39,39,39,0.08);
+
+  --accent: var(--zf-red);
+  --accent-fg: var(--zf-white);
+  --accent-hover: var(--zf-red-dark);
+
+  --focus-ring: rgba(239,70,35,0.35);
+
+  /* ====== TYPE FAMILIES ====== */
+  /* Brand display (Gilroy substitute) */
+  --font-display: 'Outfit', 'Gilroy', system-ui, -apple-system, sans-serif;
+  /* Website body / UI */
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Mono — for specs / technical callouts */
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ====== TYPE WEIGHTS ====== */
+  --w-light: 300;
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-semibold: 600;
+  --w-bold: 700;
+  --w-extrabold: 800;
+  --w-black: 900;
+
+  /* ====== TYPE SCALE (fluid) ====== */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-md: 18px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 32px;
+  --fs-3xl: 44px;
+  --fs-4xl: 60px;
+  --fs-5xl: 84px;
+  --fs-6xl: 120px;
+
+  /* ====== SPACING ====== */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+  --s-10: 128px;
+
+  /* ====== RADII ====== */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* ====== SHADOWS ====== */
+  --shadow-sm: 0 1px 2px rgba(39,39,39,0.06), 0 1px 1px rgba(39,39,39,0.04);
+  --shadow-md: 0 4px 12px rgba(39,39,39,0.08), 0 2px 4px rgba(39,39,39,0.06);
+  --shadow-lg: 0 16px 40px rgba(39,39,39,0.14), 0 4px 10px rgba(39,39,39,0.06);
+
+  /* ====== MOTION ====== */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-med: 240ms;
+  --dur-slow: 420ms;
+}
+
+/* ====== SEMANTIC TYPE STYLES ====== */
+.zf-display {
+  font-family: var(--font-display);
+  font-weight: var(--w-black);
+  font-size: clamp(56px, 9vw, var(--fs-6xl));
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+}
+
+.zf-h1 {
+  font-family: var(--font-display);
+  font-weight: var(--w-extrabold);
+  font-size: clamp(36px, 5vw, var(--fs-4xl));
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+}
+
+.zf-h2 {
+  font-family: var(--font-display);
+  font-weight: var(--w-extrabold);
+  font-size: var(--fs-3xl);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+}
+
+.zf-h3 {
+  font-family: var(--font-display);
+  font-weight: var(--w-bold);
+  font-size: var(--fs-2xl);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+}
+
+.zf-eyebrow {
+  font-family: var(--font-body);
+  font-weight: var(--w-semibold);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.zf-tagline {
+  font-family: var(--font-display);
+  font-weight: var(--w-black);
+  font-style: italic;
+  font-size: clamp(28px, 4vw, var(--fs-3xl));
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.zf-body {
+  font-family: var(--font-body);
+  font-weight: var(--w-regular);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  color: var(--fg-1);
+}
+
+.zf-body-lg {
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--fg-1);
+}
+
+.zf-caption {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--fg-3);
+}
+
+.zf-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.02em;
+  color: var(--fg-2);
+}
+
+/* ====== SIGNATURE COMPONENTS ====== */
+.zf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  font-family: var(--font-body);
+  font-weight: var(--w-semibold);
+  font-size: var(--fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 14px 28px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid transparent;
+  background: var(--accent);
+  color: var(--accent-fg);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+  text-decoration: none;
+}
+.zf-btn:hover { background: var(--accent-hover); }
+.zf-btn:active { transform: translateY(1px); }
+
+.zf-btn--secondary {
+  background: transparent;
+  color: var(--fg-1);
+  border-color: var(--fg-1);
+}
+.zf-btn--secondary:hover { background: var(--fg-1); color: var(--fg-inverse); }
+
+.zf-btn--ghost {
+  background: transparent;
+  color: var(--fg-1);
+  border-color: transparent;
+  padding: 10px 0;
+}
+.zf-btn--ghost:hover { color: var(--accent); }
+
+.zf-rainbow-text {
+  background: var(--zf-gradient-rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.zf-rainbow-rule {
+  height: 4px;
+  background: var(--zf-gradient-rainbow);
+  border: 0;
+  border-radius: var(--r-pill);
+}

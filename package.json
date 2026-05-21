@@ -1,0 +1,19 @@
+{
+  "name": "zipfit-fit-quiz",
+  "version": "1.0.0",
+  "description": "ZipFit Find-My-Fit quiz — static frontend + Express API that fans out to Shopify + Odoo.",
+  "private": true,
+  "main": "server.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "morgan": "^1.10.0"
+  }
+}
