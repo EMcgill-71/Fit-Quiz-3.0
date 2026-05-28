@@ -350,6 +350,17 @@ window.LINER_IMG = {
   workhorse:'assets/liner-workhorse.png',
 };
 
+// Shopify product page URLs — update these with your actual product handles.
+window.LINER_SHOP_URL = {
+  corsa:    'https://zipfit.com/products/corsa',
+  gft:      'https://zipfit.com/products/gft',
+  espresso: 'https://zipfit.com/products/espresso',
+  gara_lv:  'https://zipfit.com/products/gara-lv',
+  gara_hv:  'https://zipfit.com/products/gara-hv',
+  freeride: 'https://zipfit.com/products/freeride',
+  workhorse:'https://zipfit.com/products/workhorse',
+};
+
 // Convenience: get the top recommendation + valid alternates as a structured result.
 // answers shape: { boot, ff, ins, ank, cal, fit_problem, ability }
 window.computeMatch = function (answers) {

@@ -908,6 +908,30 @@
       const id = requestAnimationFrame(() => setRevealed(true));
       return () => cancelAnimationFrame(id);
     }, []);
+
+    // Fire-and-forget submit to the backend (Klaviyo + Shopify + Odoo).
+    // sessionStorage flag prevents double-posting if the user navigates back.
+    useEffect(() => {
+      if (!answers.lead?.email || !top) return;
+      const sigKey = `__zf_${answers.lead.email}:${top.id}`;
+      try { if (sessionStorage.getItem(sigKey)) return; } catch (_) {}
+      fetch('/api/fit-quiz/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead: answers.lead,
+          boot: answers.boot || null,
+          match: { id: top.id, name: top.name },
+          answers: {
+            ff: answers.ff, ank: answers.ank, cal: answers.cal,
+            fit_problem: answers.fit_problem, ability: answers.ability,
+          },
+          submittedAt: new Date().toISOString(),
+        }),
+      })
+        .then((r) => { if (r.ok) try { sessionStorage.setItem(sigKey, '1'); } catch (_) {} })
+        .catch((e) => console.warn('fit-quiz submit failed', e));
+    }, []);
     const revealStyle = (delay) => ({
       opacity: revealed ? 1 : 0,
       transform: revealed ? 'translateY(0)' : 'translateY(8px)',
@@ -1062,7 +1086,7 @@
         )}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 16, ...revealStyle(460) }}>
-          <button style={{ ...btnPrimary(false), flex: 1, background: linerColor, borderColor: linerColor }}>Shop the {top.name}</button>
+          <a href={window.LINER_SHOP_URL[top.id] || '#'} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary(false), flex: 1, background: linerColor, borderColor: linerColor, textDecoration: 'none', textAlign: 'center' }}>Shop the {top.name}</a>
           {onBack && (
             <button onClick={onBack} style={{ background: 'transparent', color: BLACK, border: `1.5px solid rgba(39,39,39,.18)`, borderRadius: 4, padding: '13px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>← Edit answers</button>
           )}
