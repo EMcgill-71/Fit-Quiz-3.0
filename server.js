@@ -3,10 +3,13 @@
 // Serves the static quiz from the root directory and exposes ONE backend endpoint:
 //   POST /api/fit-quiz/submit
 // which receives the lead + quiz answers and fans them out to:
-//   • Shopify Admin API   (creates/updates a customer, tags with the match)
-//   • Odoo (XML-RPC)      (creates a crm.lead row)
+//   • Klaviyo               (upserts a profile + tracks "Fit Quiz Completed" event)
+//   • Shopify Admin API     (creates/updates a customer, tags with the match)
+//   • Odoo (XML-RPC)        (creates a crm.lead row)
 //
 // Env vars (set in Railway → Variables):
+//   KLAVIYO_API_KEY        Private API key (pk_live_…)
+//   KLAVIYO_LIST_ID        Optional — list ID to subscribe opt-in leads to
 //   SHOPIFY_STORE_DOMAIN   e.g. zipfit.myshopify.com
 //   SHOPIFY_ADMIN_TOKEN    Custom App admin API access token (write_customers)
 //   ODOO_URL               e.g. https://zipfit.odoo.com
@@ -79,15 +82,141 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
   });
 
   const results = await Promise.allSettled([
+    pushToKlaviyo({ lead, boot, answers, match }),
     pushToShopify({ lead, boot, answers, match }),
     pushToOdoo({ lead, boot, answers, match }),
   ]);
 
-  const shopify = results[0].status === 'fulfilled' ? results[0].value : { skipped: results[0].reason?.message };
-  const odoo = results[1].status === 'fulfilled' ? results[1].value : { skipped: results[1].reason?.message };
+  const klaviyo = results[0].status === 'fulfilled' ? results[0].value : { skipped: results[0].reason?.message };
+  const shopify = results[1].status === 'fulfilled' ? results[1].value : { skipped: results[1].reason?.message };
+  const odoo    = results[2].status === 'fulfilled' ? results[2].value : { skipped: results[2].reason?.message };
 
-  res.json({ ok: true, shopify, odoo });
+  res.json({ ok: true, klaviyo, shopify, odoo });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Integration: Klaviyo v3
+//
+// 1. Upsert the profile with all quiz answers as custom properties.
+// 2. Track a "Fit Quiz Completed" event so flows can be triggered on it.
+// 3. If KLAVIYO_LIST_ID is set AND the user opted in, subscribe them to the list.
+//
+// Requires KLAVIYO_API_KEY (Private API key from Klaviyo → Account → API Keys).
+// ─────────────────────────────────────────────────────────────────────────
+async function pushToKlaviyo({ lead, boot, answers, match }) {
+  const apiKey = process.env.KLAVIYO_API_KEY;
+  if (!apiKey) throw new Error('klaviyo_not_configured');
+
+  const headers = {
+    'Authorization': `Klaviyo-API-Key ${apiKey}`,
+    'Content-Type': 'application/json',
+    'revision': '2023-12-15',
+  };
+
+  const fitProblems = (Array.isArray(answers?.fit_problem)
+    ? answers.fit_problem
+    : [answers?.fit_problem]
+  ).filter(Boolean);
+
+  const profileProps = {
+    first_name: lead.name,
+    email: lead.email,
+    properties: {
+      fit_quiz_liner:        match?.name  || null,
+      fit_quiz_liner_id:     match?.id    || null,
+      fit_quiz_boot_brand:   boot?.b      || null,
+      fit_quiz_boot_model:   boot?.m      || null,
+      fit_quiz_boot_year:    boot?.y      || null,
+      fit_quiz_last_mm:      boot?.l      || null,
+      fit_quiz_volume:       boot?.v      || null,
+      fit_quiz_forefoot:     answers?.ff  || null,
+      fit_quiz_instep:       answers?.ins || null,
+      fit_quiz_ankle:        answers?.ank || null,
+      fit_quiz_calf:         answers?.cal || null,
+      fit_quiz_ability:      answers?.ability || null,
+      fit_quiz_fit_problems: fitProblems.join(', ') || null,
+      fit_quiz_completed_at: new Date().toISOString(),
+    },
+  };
+
+  // Step 1 — upsert profile
+  const profileRes = await fetch('https://a.klaviyo.com/api/profiles/', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      data: { type: 'profile', attributes: profileProps },
+    }),
+  });
+
+  // 409 means the profile already exists — Klaviyo returns the existing profile id
+  // so we can patch it with the latest quiz answers.
+  let profileId;
+  if (profileRes.status === 409) {
+    const conflict = await profileRes.json();
+    profileId = conflict.errors?.[0]?.meta?.duplicate_profile_id;
+    if (profileId) {
+      await fetch(`https://a.klaviyo.com/api/profiles/${profileId}/`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          data: { type: 'profile', id: profileId, attributes: profileProps },
+        }),
+      });
+    }
+  } else if (profileRes.ok) {
+    const created = await profileRes.json();
+    profileId = created.data?.id;
+  } else {
+    const text = await profileRes.text();
+    throw new Error(`klaviyo_profile_${profileRes.status}: ${text.slice(0, 200)}`);
+  }
+
+  // Step 2 — track event
+  await fetch('https://a.klaviyo.com/api/events/', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      data: {
+        type: 'event',
+        attributes: {
+          metric: { data: { type: 'metric', attributes: { name: 'Fit Quiz Completed' } } },
+          profile: { data: { type: 'profile', attributes: { email: lead.email } } },
+          properties: {
+            liner:        match?.name  || null,
+            liner_id:     match?.id    || null,
+            boot_brand:   boot?.b      || null,
+            boot_model:   boot?.m      || null,
+            boot_year:    boot?.y      || null,
+            last_mm:      boot?.l      || null,
+            volume:       boot?.v      || null,
+            forefoot:     answers?.ff  || null,
+            instep:       answers?.ins || null,
+            ankle:        answers?.ank || null,
+            calf:         answers?.cal || null,
+            ability:      answers?.ability || null,
+            fit_problems: fitProblems,
+          },
+          value: 1,
+          time: new Date().toISOString(),
+        },
+      },
+    }),
+  });
+
+  // Step 3 — subscribe to list (only if opted in and a list is configured)
+  const listId = process.env.KLAVIYO_LIST_ID;
+  if (listId && lead.optIn && profileId) {
+    await fetch(`https://a.klaviyo.com/api/lists/${listId}/relationships/profiles/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        data: [{ type: 'profile', id: profileId }],
+      }),
+    });
+  }
+
+  return { ok: true, profileId };
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Integration: Shopify Admin API
