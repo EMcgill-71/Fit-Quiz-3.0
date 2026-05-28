@@ -672,9 +672,21 @@
   // ─── main quiz ──────────────────────────────────────────────────────
   const STAGES = ['intro', 'lead', 'boot', 'ff', 'ank', 'cal', 'fit_problem', 'ability', 'result'];
 
+  // Decode a ?r= result token so follow-up email links land directly on the
+  // result screen. Returns a partial answers object or null if absent/invalid.
+  function decodeResultParam() {
+    try {
+      const p = new URLSearchParams(window.location.search).get('r');
+      if (!p) return null;
+      // base64url → base64 → JSON
+      return JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
+    } catch (_) { return null; }
+  }
+
   function QuizEditorial() {
-    const [step, setStep] = useState(0);
-    const [answers, setAnswers] = useState({});
+    const prefill = useMemo(decodeResultParam, []);
+    const [step, setStep] = useState(() => prefill ? STAGES.indexOf('result') : 0);
+    const [answers, setAnswers] = useState(() => prefill || {});
 
     const stage = STAGES[step];
     // Real quiz questions (excludes intro, lead, result)

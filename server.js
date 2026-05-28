@@ -10,6 +10,10 @@
 // Env vars (set in Railway → Variables):
 //   KLAVIYO_API_KEY        Private API key (pk_live_…)
 //   KLAVIYO_LIST_ID        Optional — list ID to subscribe opt-in leads to
+//   QUIZ_URL               Public URL of this quiz (e.g. https://fit.zipfit.com)
+//                          Used to build the shareable result link stored on the profile
+//                          as fit_quiz_result_url — insert {{ person.fit_quiz_result_url }}
+//                          in your Klaviyo email templates.
 //   SHOPIFY_STORE_DOMAIN   e.g. zipfit.myshopify.com
 //   SHOPIFY_ADMIN_TOKEN    Custom App admin API access token (write_customers)
 //   ODOO_URL               e.g. https://zipfit.odoo.com
@@ -103,6 +107,23 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
 //
 // Requires KLAVIYO_API_KEY (Private API key from Klaviyo → Account → API Keys).
 // ─────────────────────────────────────────────────────────────────────────
+// Builds a shareable URL that loads the quiz directly on the result screen.
+// Encoded as base64url JSON so it survives email link tracking without issues.
+function buildResultUrl({ lead, boot, answers }) {
+  const base = (process.env.QUIZ_URL || '').replace(/\/$/, '');
+  if (!base) return null;
+  const token = Buffer.from(JSON.stringify({
+    lead:        { name: lead.name },
+    boot:        boot                  || null,
+    ff:          answers?.ff           || null,
+    ank:         answers?.ank          || null,
+    cal:         answers?.cal          || null,
+    fit_problem: answers?.fit_problem  || null,
+    ability:     answers?.ability      || null,
+  })).toString('base64url');
+  return `${base}/?r=${token}`;
+}
+
 async function pushToKlaviyo({ lead, boot, answers, match }) {
   const apiKey = process.env.KLAVIYO_API_KEY;
   if (!apiKey) throw new Error('klaviyo_not_configured');
@@ -118,6 +139,8 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
     : [answers?.fit_problem]
   ).filter(Boolean);
 
+  const resultUrl = buildResultUrl({ lead, boot, answers });
+
   const profileProps = {
     first_name: lead.name,
     email: lead.email,
@@ -130,12 +153,12 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
       fit_quiz_last_mm:      boot?.l      || null,
       fit_quiz_volume:       boot?.v      || null,
       fit_quiz_forefoot:     answers?.ff  || null,
-      fit_quiz_instep:       answers?.ins || null,
       fit_quiz_ankle:        answers?.ank || null,
       fit_quiz_calf:         answers?.cal || null,
       fit_quiz_ability:      answers?.ability || null,
       fit_quiz_fit_problems: fitProblems.join(', ') || null,
       fit_quiz_completed_at: new Date().toISOString(),
+      fit_quiz_result_url:   resultUrl,
     },
   };
 
@@ -195,6 +218,7 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
             calf:         answers?.cal || null,
             ability:      answers?.ability || null,
             fit_problems: fitProblems,
+            result_url:   resultUrl,
           },
           value: 1,
           time: new Date().toISOString(),
