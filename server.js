@@ -244,91 +244,141 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Integration: Shopify Admin API
-// Creates (or updates) a Customer record and tags it with the match metadata.
-// Uses the 2024-10 REST endpoint — adjust if your app pins a different version.
+// Upserts a Customer: searches by email first, updates if found, creates if not.
+// This prevents 422 errors for existing customers and keeps their record current.
 // Requires SHOPIFY_STORE_DOMAIN + SHOPIFY_ADMIN_TOKEN with write_customers.
 // ─────────────────────────────────────────────────────────────────────────
 async function pushToShopify({ lead, boot, match }) {
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
   const token = process.env.SHOPIFY_ADMIN_TOKEN;
-  if (!domain || !token) {
-    throw new Error('shopify_not_configured');
-  }
+  if (!domain || !token) throw new Error('shopify_not_configured');
 
-  const tags = [
-    'fit-quiz',
-    match?.id ? `liner:${match.id}` : null,
-    boot?.b ? `boot-brand:${slug(boot.b)}` : null,
-  ].filter(Boolean).join(', ');
-
-  const body = {
-    customer: {
-      first_name: lead.name,
-      email: lead.email,
-      tags,
-      accepts_marketing: !!lead.optIn,
-      note: `Fit Quiz match: ${match?.name || '—'} · ${boot?.b || ''} ${boot?.m || ''}`,
-      metafields: [
-        { namespace: 'fit_quiz', key: 'match_liner', value: String(match?.id || ''), type: 'single_line_text_field' },
-        { namespace: 'fit_quiz', key: 'boot', value: `${boot?.b || ''} ${boot?.m || ''}`.trim(), type: 'single_line_text_field' },
-      ],
-    },
+  const authHeaders = {
+    'X-Shopify-Access-Token': token,
+    'Content-Type': 'application/json',
   };
+  const base = `https://${domain}/admin/api/2024-10`;
 
-  const r = await fetch(`https://${domain}/admin/api/2024-10/customers.json`, {
-    method: 'POST',
-    headers: {
-      'X-Shopify-Access-Token': token,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  const newTags = [
+    'fit-quiz',
+    match?.id  ? `liner:${match.id}`        : null,
+    boot?.b    ? `boot-brand:${slug(boot.b)}` : null,
+  ].filter(Boolean);
 
-  if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`shopify_${r.status}: ${text.slice(0, 200)}`);
+  const note = `Fit Quiz: ${match?.name || '—'} · ${[boot?.b, boot?.m].filter(Boolean).join(' ')}`.trim();
+
+  const metafields = [
+    { namespace: 'fit_quiz', key: 'match_liner', value: String(match?.id || ''), type: 'single_line_text_field' },
+    { namespace: 'fit_quiz', key: 'boot',        value: [boot?.b, boot?.m].filter(Boolean).join(' '), type: 'single_line_text_field' },
+    { namespace: 'fit_quiz', key: 'last_mm',     value: String(boot?.l || ''), type: 'single_line_text_field' },
+    { namespace: 'fit_quiz', key: 'volume',      value: String(boot?.v || ''), type: 'single_line_text_field' },
+  ];
+
+  // ── Search for existing customer ────────────────────────────────────────
+  const searchRes = await fetch(
+    `${base}/customers/search.json?query=email:${encodeURIComponent(lead.email)}&limit=1&fields=id,tags`,
+    { headers: authHeaders },
+  );
+  if (!searchRes.ok) {
+    const t = await searchRes.text();
+    throw new Error(`shopify_search_${searchRes.status}: ${t.slice(0, 200)}`);
   }
-  const out = await r.json();
-  return { ok: true, customerId: out.customer?.id };
+  const { customers } = await searchRes.json();
+  const existing = customers?.[0];
+
+  if (existing) {
+    // ── Update — merge tags so we don't clobber existing ones ───────────
+    const existingTags = (existing.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const mergedTags = [...new Set([...existingTags, ...newTags])].join(', ');
+
+    const putRes = await fetch(`${base}/customers/${existing.id}.json`, {
+      method: 'PUT',
+      headers: authHeaders,
+      body: JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note, accepts_marketing: !!lead.optIn, metafields } }),
+    });
+    if (!putRes.ok) {
+      const t = await putRes.text();
+      throw new Error(`shopify_update_${putRes.status}: ${t.slice(0, 200)}`);
+    }
+    return { ok: true, customerId: existing.id, action: 'updated' };
+  }
+
+  // ── Create ─────────────────────────────────────────────────────────────
+  const postRes = await fetch(`${base}/customers.json`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      customer: {
+        first_name: lead.name,
+        email: lead.email,
+        tags: newTags.join(', '),
+        accepts_marketing: !!lead.optIn,
+        note,
+        metafields,
+      },
+    }),
+  });
+  if (!postRes.ok) {
+    const t = await postRes.text();
+    throw new Error(`shopify_create_${postRes.status}: ${t.slice(0, 200)}`);
+  }
+  const out = await postRes.json();
+  return { ok: true, customerId: out.customer?.id, action: 'created' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Integration: Odoo (XML-RPC)
-// Creates a crm.lead row. Odoo's REST API is patchy across versions — XML-RPC
-// is the universal path. We use fetch + a hand-rolled XML envelope so there
-// are no extra npm deps.
+// Creates a crm.lead row as the canonical record for every quiz submission.
+// XML-RPC is used because it works across all Odoo versions without extra deps.
+// A 12-second timeout prevents a slow Odoo server from blocking the response.
 // ─────────────────────────────────────────────────────────────────────────
 async function pushToOdoo({ lead, boot, answers, match }) {
-  const url = process.env.ODOO_URL;
-  const db = process.env.ODOO_DB;
+  const url  = process.env.ODOO_URL;
+  const db   = process.env.ODOO_DB;
   const user = process.env.ODOO_USER;
-  const key = process.env.ODOO_API_KEY;
-  if (!url || !db || !user || !key) {
-    throw new Error('odoo_not_configured');
-  }
+  const key  = process.env.ODOO_API_KEY;
+  if (!url || !db || !user || !key) throw new Error('odoo_not_configured');
 
-  // Step 1 — authenticate to get the UID.
+  const fitProblems = (Array.isArray(answers?.fit_problem)
+    ? answers.fit_problem
+    : [answers?.fit_problem]
+  ).filter(Boolean).join(', ') || '—';
+
+  const resultUrl = buildResultUrl({ lead, boot, answers });
+
+  // Authenticate then create — two calls, both subject to the 12 s timeout.
   const uid = await xmlrpc(`${url}/xmlrpc/2/common`, 'authenticate', [db, user, key, {}]);
   if (!uid) throw new Error('odoo_auth_failed');
 
-  // Step 2 — create the lead.
   const leadVals = {
-    name: `Fit Quiz · ${lead.name} · ${match?.name || 'no match'}`,
+    name:         `Fit Quiz · ${lead.name} · ${match?.name || 'no match'}`,
     contact_name: lead.name,
-    email_from: lead.email,
-    type: 'lead',
-    source_id: false,
+    email_from:   lead.email,
+    type:         'lead',
+    source_id:    false,
     description: [
-      `Match: ${match?.name || '—'} (${match?.id || '—'})`,
-      `Boot: ${boot?.b || ''} ${boot?.m || ''} ${boot?.y || ''}`.trim(),
-      `Last: ${boot?.l || '—'}mm  · Flex: ${boot?.f || '—'} · Vol: ${boot?.v || '—'}`,
-      `Forefoot: ${answers?.ff || '—'} · Instep: ${answers?.ins || '—'}`,
-      `Ankle: ${answers?.ank || '—'} · Calf: ${answers?.cal || '—'}`,
-      `Ability: ${answers?.ability || '—'}`,
-      `Fit problems: ${(Array.isArray(answers?.fit_problem) ? answers.fit_problem : [answers?.fit_problem]).filter(Boolean).join(', ') || '—'}`,
+      '── Liner Match ────────────────────────',
+      `Match:        ${match?.name || '—'} (id: ${match?.id || '—'})`,
+      '',
+      '── Boot ───────────────────────────────',
+      `Brand / Model: ${[boot?.b, boot?.m, boot?.y].filter(Boolean).join(' ') || '—'}`,
+      `Last:          ${boot?.l || '—'} mm`,
+      `Flex:          ${boot?.f || '—'}`,
+      `Volume:        ${boot?.v || '—'}`,
+      '',
+      '── Foot Profile ───────────────────────',
+      `Forefoot:      ${answers?.ff  || '—'}`,
+      `Ankle:         ${answers?.ank || '—'}`,
+      `Calf:          ${answers?.cal || '—'}`,
+      `Ability:       ${answers?.ability || '—'}`,
+      `Fit problems:  ${fitProblems}`,
+      '',
+      '── Lead Info ──────────────────────────',
       `Marketing opt-in: ${lead.optIn ? 'yes' : 'no'}`,
-    ].join('\n'),
+      resultUrl ? `Result link:      ${resultUrl}` : '',
+    ].filter((l) => l !== undefined).join('\n'),
   };
+
   const id = await xmlrpc(`${url}/xmlrpc/2/object`, 'execute_kw', [
     db, uid, key, 'crm.lead', 'create', [leadVals],
   ]);
@@ -336,15 +386,24 @@ async function pushToOdoo({ lead, boot, answers, match }) {
 }
 
 // Tiny XML-RPC client. Enough for Odoo's two methods we need.
+// 12-second timeout prevents a slow Odoo instance from blocking the whole response.
 async function xmlrpc(endpoint, method, params) {
   const body = `<?xml version="1.0"?><methodCall><methodName>${method}</methodName><params>${
     params.map((p) => `<param><value>${xmlrpcValue(p)}</value></param>`).join('')
   }</params></methodCall>`;
-  const r = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/xml' },
-    body,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  let r;
+  try {
+    r = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/xml' },
+      body,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!r.ok) throw new Error(`odoo_http_${r.status}`);
   const text = await r.text();
   if (text.includes('<fault>')) {
