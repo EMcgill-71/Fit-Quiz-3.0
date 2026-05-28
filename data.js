@@ -193,27 +193,27 @@ function scoreLiners(){
       var isTour=boot.w&&last>0&&last>=96;
       if(isDH)s+=90;else if(isTour)s+=70;
     }
-    // Gara LV: 96-100mm, lean/avg calf, leans toward lean/bony ankles
+    // Gara LV: 96-100mm, lean/avg calf
+    // Full/fleshy ankle → LV (natural tissue already fills the shell; LV liner fits precisely)
+    // Flat arch + lean ankle together → HV (compound signal overrides; lean alone → mild LV pull)
     if(l.id==='gara_lv'){
       if(last===0||last<96||last>100)return{l:l,s:-999};
       if(ans.cal==='high')return{l:l,s:-999};
       s+=95;
-      if(ans.ank==='low')s+=20;
-      else if(ans.ank==='high')s-=25;
-      // flat arch pronates and needs more volume → push toward HV
-      if(ans.ins==='low')s-=25;
-      else if(ans.ins==='high')s+=20;
+      if(ans.ank==='high')s+=30;
+      else if(ans.ank==='low'&&ans.ins==='low')s-=30;
+      else if(ans.ank==='low')s+=15;
     }
-    // Gara HV: 100-104mm, lean/avg calf, leans toward fuller ankles
+    // Gara HV: 100-104mm, lean/avg calf
+    // Full/fleshy ankle → not HV (adding liner bulk over existing tissue overfills the shell)
+    // Flat arch + lean ankle → HV (dead space from both signals; liner fill is needed)
     if(l.id==='gara_hv'){
       if(last===0||last<100||last>104)return{l:l,s:-999};
       if(ans.cal==='high')return{l:l,s:-999};
       s+=95;
-      if(ans.ank==='high')s+=20;
-      else if(ans.ank==='low')s-=25;
-      // flat arch pronates and spreads → benefits from HV volume
-      if(ans.ins==='low')s+=25;
-      else if(ans.ins==='high')s-=20;
+      if(ans.ank==='high')s-=30;
+      else if(ans.ank==='low'&&ans.ins==='low')s+=30;
+      else if(ans.ank==='low')s-=10;
     }
     // Freeride: 100-106mm, +30 large calf, +12 tour
     if(l.id==='freeride'){
