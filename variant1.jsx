@@ -406,60 +406,159 @@
   }
 
   // ─── option cards (anatomy + choice) ────────────────────────────────
-  // Side-profile foot for the instep step — arch curve varies with level.
-  // Renders inline-SVG so we can color it for active state.
+  // Clean technical-illustration style side views of foot / ankle / calf.
+  // All three share a 120x80 viewBox, a 1.8px stroke, and a light fill so they
+  // read as a coherent illustrated set. Active state inverts via the color prop.
+
+  // Foot side view — heel, ankle stub, top of foot, toes, arch underneath.
+  // Arch lift + instep rise both scale with level so options read at a glance.
   function FootSideSvg({ level, color }) {
-    // archDip: how far the underside curves up between heel and ball
-    const archDip = level === 'low' ? 4 : level === 'high' ? 22 : 13;
-    const archMidY = 44 - archDip;
+    const arch = level === 'low' ? 1 : level === 'high' ? 12 : 6;
+    const inst = level === 'low' ? 0 : level === 'high' ? 8 : 4;
     return (
-      <svg viewBox="0 0 110 56" width="92" height="48" fill="none" style={{ display: 'block' }}>
-        {/* Ground line */}
-        <line x1="6" y1="50" x2="104" y2="50" stroke={color} strokeOpacity=".22" strokeDasharray="2 3" />
-        {/* Foot outline — heel bump, top of foot, toes ramp, underside with arch */}
-        <path
-          d={`M16 44
-             Q10 44 10 38
-             Q10 28 18 24
-             Q26 18 44 14
-             Q66 12 88 18
-             Q98 22 96 30
-             Q92 38 84 42
-             Q72 46 56 46
-             Q42 46 30 ${archMidY}
-             Q22 ${archMidY + (level === 'high' ? -2 : 1)} 16 44 Z`}
-          fill={color} fillOpacity=".06" stroke={color} strokeWidth="1.6" strokeLinejoin="round"
-        />
-        {/* Arch indicator — small curve to call attention to it */}
-        <path
-          d={`M30 ${archMidY} Q44 ${archMidY - (archDip * .4)} 60 ${archMidY + 1}`}
-          stroke={color} strokeOpacity=".55" strokeWidth="1.4" strokeLinecap="round" fill="none"
-        />
-        {/* Ankle tab */}
-        <path d="M22 24 Q26 12 36 12 L36 18" stroke={color} strokeOpacity=".4" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+      <svg viewBox="0 0 120 80" width="118" height="78" fill="none" style={{ display: 'block' }} aria-hidden="true">
+        <g stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill={color} fillOpacity=".05">
+          <path d={`
+            M 32 70
+            Q 16 70 12 60
+            Q 8 50 16 42
+            L 18 28
+            L 18 14
+            Q 18 8 26 8
+            L 40 8
+            Q 46 8 46 14
+            L 46 22
+            Q 50 ${28 - inst} 60 ${26 - inst}
+            Q 78 ${30 - inst * .4} 96 38
+            Q 108 42 114 52
+            Q 116 62 106 64
+            Q 92 66 78 66
+            Q 66 ${68 - arch * .3} 56 ${68 - arch}
+            Q 44 ${68 - arch * .4} 34 68
+            Q 30 70 32 70 Z
+          `} />
+          {/* Toe knuckle hint */}
+          <path d="M 100 50 Q 104 48 108 52" fill="none" strokeOpacity=".35" strokeWidth="1.2" />
+        </g>
       </svg>
     );
   }
 
-  // Map each anatomy SVG key to a foot/leg glyph and a relative size so
-  // wider/larger anatomy options literally read larger on the card.
+  // Ankle side view — lower leg, achilles, heel, top of foot.
+  // Volume = how much soft tissue surrounds the ankle. Lean (low) shows a
+  // prominent malleolus; high padding buries it.
+  function AnkleSideSvg({ level, color }) {
+    const back = level === 'low' ? 0 : level === 'high' ? 10 : 5;
+    const front = level === 'low' ? 0 : level === 'high' ? 6 : 3;
+    const boneR = level === 'low' ? 5 : level === 'high' ? 2 : 3.2;
+    const boneFill = level === 'low' ? .35 : level === 'high' ? .08 : .2;
+    return (
+      <svg viewBox="0 0 120 80" width="118" height="78" fill="none" style={{ display: 'block' }} aria-hidden="true">
+        <g stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill={color} fillOpacity=".05">
+          <path d={`
+            M 38 0
+            L ${66 + front} 0
+            L ${66 + front} 28
+            Q ${66 + front} 40 ${62 + front} 50
+            Q ${60 + front} 58 68 62
+            Q 86 66 120 66
+            L 120 76
+            L 26 76
+            Q 12 76 12 62
+            Q 12 52 ${22 - back} 48
+            Q ${32 - back * .6} 44 ${34 - back * .3} 36
+            Q ${36 - back * .15} 22 38 0 Z
+          `} />
+          {/* Achilles tendon */}
+          <path d={`M ${38 - back * .15} 6 Q ${36 - back * .4} 30 ${28 - back * .5} 48`}
+            fill="none" strokeOpacity=".3" strokeWidth="1.2" />
+          {/* Lateral malleolus (ankle bone) */}
+          <circle cx={28 - back * .3} cy={56} r={boneR}
+            fill={color} fillOpacity={boneFill} strokeWidth="1.4" />
+        </g>
+      </svg>
+    );
+  }
+
+  // Calf — just the muscle belly viewed from the side. No foot, no knee.
+  // Back-of-calf bulge grows with level for a clear teardrop progression.
+  function CalfSvg({ level, color }) {
+    const w = level === 'lean' ? 0 : level === 'large' ? 14 : 7;
+    return (
+      <svg viewBox="0 0 120 80" width="92" height="76" fill="none" style={{ display: 'block' }} aria-hidden="true">
+        <g stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill={color} fillOpacity=".05">
+          <path d={`
+            M 54 2
+            Q 62 18 62 38
+            Q 60 56 54 70
+            Q 50 78 44 78
+            Q 38 78 38 70
+            Q 38 58 ${42 - w * .15} 48
+            Q ${28 - w} 36 ${32 - w * .5} 22
+            Q ${40 - w * .15} 8 46 4
+            Q 50 2 54 2 Z
+          `} />
+          {/* Gastrocnemius/soleus separation */}
+          <path d={`M ${40 - w * .4} 26 Q ${36 - w * .3} 44 44 60`}
+            fill="none" strokeOpacity=".3" strokeWidth="1.2" />
+        </g>
+      </svg>
+    );
+  }
+
+  // Map each anatomy SVG key to a renderer + relative size. For forefoot we
+  // still use the foot emoji (top-down width is what matters). The rest are
+  // bespoke side-view illustrations.
   const ANAT_GLYPH = {
-    // forefoot (4 sizes)
-    ff1: { emoji: '🦶', size: 28 }, ff2: { emoji: '🦶', size: 36 },
-    ff3: { emoji: '🦶', size: 44 }, ff4: { emoji: '🦶', size: 52 },
-    // instep / arch — use rainbow emoji 🌈 (it's literally an arch shape!)
-    a1:  { emoji: '🌈', size: 30 },
-    a2:  { emoji: '🌈', size: 42 },
-    a3:  { emoji: '🌈', size: 54 },
-    // ankle (3 sizes)
-    ank1: { emoji: '🦶', size: 34 },
-    ank2: { emoji: '🦶', size: 42 },
-    ank3: { emoji: '🦶', size: 50 },
-    // calf — use leg glyph
-    c1: { emoji: '🦵', size: 36 },
-    c2: { emoji: '🦵', size: 44 },
-    c3: { emoji: '🦵', size: 52 },
+    // forefoot (4 sizes) — footprints emoji, scaled by width
+    ff1: { emoji: '👣', size: 28 }, ff2: { emoji: '👣', size: 36 },
+    ff3: { emoji: '👣', size: 44 }, ff4: { emoji: '👣', size: 52 },
+    // instep / navicular — sole/heel half of foot, scaled by arch height
+    a1:  { emoji: '🦶', size: 40, crop: 0.30 },
+    a2:  { emoji: '🦶', size: 50, crop: 0.30 },
+    a3:  { emoji: '🦶', size: 64, crop: 0.30 },
+    // ankle volume — same crop, scaled by soft tissue
+    ank1: { emoji: '🦶', size: 40, crop: 0.30 },
+    ank2: { emoji: '🦶', size: 52, crop: 0.30 },
+    ank3: { emoji: '🦶', size: 64, crop: 0.30 },
+    // calf — leg emoji with the thigh cropped off (top ~40%)
+    c1: { emoji: '🦵', size: 48, crop: 0.40 },
+    c2: { emoji: '🦵', size: 58, crop: 0.40 },
+    c3: { emoji: '🦵', size: 68, crop: 0.40 },
   };
+
+  // Emoji renderer. Loads a polished Noto SVG from jsdelivr (reliable CDN);
+  // falls back to the system emoji glyph if the network blocks the image.
+  function EmojiCard({ emoji, size, crop, active }) {
+    const cp = [...emoji].map((c) => c.codePointAt(0).toString(16)).join('-');
+    const url = `https://www.emoji.family/api/emojis/${cp}/noto/svg`;
+    const [failed, setFailed] = useState(false);
+    const W = size * 1.5;
+    if (failed) {
+      // Fallback: render the OS-native emoji glyph at the same scale, with
+      // the same overflow-crop wrapper so layout doesn't shift.
+      return (
+        <div style={{ width: W, height: W * (1 - crop), overflow: 'hidden', transition: 'all .2s ease' }}>
+          <div style={{
+            width: W, height: W, lineHeight: 1,
+            fontSize: W * 0.9, marginTop: -W * crop,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            filter: active ? 'grayscale(1) brightness(2) contrast(1.4)' : 'none',
+          }}>{emoji}</div>
+        </div>
+      );
+    }
+    return (
+      <div style={{ width: W, height: W * (1 - crop), overflow: 'hidden', transition: 'all .2s ease' }}>
+        <img src={url} alt="" onError={() => setFailed(true)} style={{
+          width: W, height: W,
+          marginTop: -W * crop,
+          display: 'block',
+          filter: active ? 'grayscale(1) brightness(2) contrast(1.4)' : 'none',
+        }} />
+      </div>
+    );
+  }
 
   function AnatCard({ svgKey, label, desc, active, onClick, cols }) {
     const g = ANAT_GLYPH[svgKey] || { emoji: '🦶', size: 40 };
@@ -477,14 +576,16 @@
         <div style={{
           width: '100%', height: 80,
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          fontSize: Math.round(g.size * 1.35),
           lineHeight: 1,
-          filter: g.emoji && active ? 'grayscale(1) brightness(2)' : 'none',
-          transition: 'font-size .2s ease',
+          transition: 'all .2s ease',
         }}>
           {g.side
             ? <FootSideSvg level={g.side} color={active ? '#fff' : BLACK} />
-            : g.emoji}
+            : g.ankle
+              ? <AnkleSideSvg level={g.ankle} color={active ? '#fff' : BLACK} />
+              : g.calf
+                ? <CalfSvg level={g.calf} color={active ? '#fff' : BLACK} />
+                : g.emoji ? <EmojiCard emoji={g.emoji} size={g.size} crop={g.crop || 0} active={active} /> : null}
         </div>
         <div style={{ fontSize: 15, fontWeight: 600 }}>{label}</div>
         <div style={{ fontSize: 13, opacity: .7, lineHeight: 1.35 }}>{desc}</div>
@@ -526,7 +627,8 @@
           border: `1px solid ${active ? 'rgba(255,255,255,.2)' : tintBg(tint, 0.28)}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 22,
-        }}>{icon}</div>
+          overflow: 'hidden',
+        }}>{icon === '🦵' ? <EmojiCard emoji="🦵" size={28} crop={0.4} active={active} /> : icon}</div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.2 }}>{label}</div>
           <div style={{ fontSize: 14, opacity: .7, marginTop: 3 }}>{desc}</div>
@@ -568,7 +670,7 @@
   }
 
   // ─── main quiz ──────────────────────────────────────────────────────
-  const STAGES = ['intro', 'lead', 'boot', 'ff', 'ins', 'ank', 'cal', 'fit_problem', 'ability', 'result'];
+  const STAGES = ['intro', 'lead', 'boot', 'ff', 'ank', 'cal', 'fit_problem', 'ability', 'result'];
 
   function QuizEditorial() {
     const [step, setStep] = useState(0);
@@ -653,7 +755,30 @@
                   </div>
                 )}
 
-                {q.type === 'choice' && q.id === 'fit_problem' && (
+                {q.type === 'anat-pair' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+                    {q.subs.map((sub, si) => (
+                      <div key={sub.id}>
+                        <div style={{
+                          fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600,
+                          color: BLACK, marginBottom: 10, display: 'flex', alignItems: 'baseline', gap: 8,
+                        }}>
+                          <span style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670' }}>{String.fromCharCode(65 + si)}</span>
+                          {sub.lbl}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${sub.cols === 'f4' ? 4 : 3}, 1fr)`, gap: 12 }}>
+                          {sub.opts.map((o) => (
+                            <AnatCard key={o.v} svgKey={o.s} label={o.l} desc={o.d}
+                              active={answers[sub.id] === o.v} cols={sub.cols === 'f4' ? 4 : 3}
+                              onClick={() => pickAndMaybeAdvance(sub.id, o.v)} />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                                {q.type === 'choice' && q.id === 'fit_problem' && (
                   // Fit problems are multi-select: pick all that apply. "No
                   // major issues" is mutually exclusive with the rest.
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -723,7 +848,7 @@
             <span style={{ ...rainbowText, display: 'block', fontSize: 168, lineHeight: .82 }}>ZipFit.</span>
           </h1>
           <p style={{ fontSize: 19, lineHeight: 1.45, color: '#4A4A4A', maxWidth: 600, margin: 0, textWrap: 'pretty' }}>
-            Seven questions about your shell, foot shape, and how you ski. We match you to one of seven ZipFits — handmade in Italy.
+            Six questions about your shell, foot shape, and how you ski. We match you to one of seven ZipFits — handmade in Italy.
           </p>
           <div style={{ marginTop: 28, background: WARM, borderRadius: 10, padding: 18, display: 'flex', gap: 16, alignItems: 'center', maxWidth: 580 }}>
             <img src="assets/lifestyle-liner.jpg" alt="" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
@@ -734,7 +859,7 @@
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 28 }}>
           <button onClick={onStart} style={btnPrimary(false)}>Begin →</button>
-          <span style={{ fontSize: 13, color: '#7A7670' }}>~ 2 minutes · 7 steps</span>
+          <span style={{ fontSize: 13, color: '#7A7670' }}>~ 2 minutes · 6 steps</span>
         </div>
       </div>
     );
@@ -770,33 +895,6 @@
     useEffect(() => {
       const id = requestAnimationFrame(() => setRevealed(true));
       return () => cancelAnimationFrame(id);
-    }, []);
-
-    // Fire the submit once when the user lands on the result page. The
-    // backend (railway/server.js) fans this out to Shopify + Odoo. We don't
-    // block the UI on it — the result is shown immediately and the request
-    // is fire-and-forget. Set a sessionStorage flag so we don't double-post
-    // if the user navigates back and forward.
-    useEffect(() => {
-      if (!answers.lead || !answers.lead.email || !top) return;
-      const sigKey = '__zf_submitted_' + answers.lead.email + ':' + (top.id || '');
-      try { if (sessionStorage.getItem(sigKey)) return; } catch (e) {}
-      const payload = {
-        lead: answers.lead,
-        boot: answers.boot || null,
-        match: top ? { id: top.id, name: top.name } : null,
-        answers: {
-          ff: answers.ff, ins: answers.ins, ank: answers.ank, cal: answers.cal,
-          fit_problem: answers.fit_problem, ability: answers.ability,
-        },
-        submittedAt: new Date().toISOString(),
-      };
-      fetch('/api/fit-quiz/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).then((r) => { if (r.ok) try { sessionStorage.setItem(sigKey, '1'); } catch (e) {} })
-        .catch((e) => console.warn('fit-quiz submit failed', e));
     }, []);
     const revealStyle = (delay) => ({
       opacity: revealed ? 1 : 0,
@@ -924,38 +1022,6 @@
             </div>
           </Section>
         </div>
-
-        {/* Alternates — each gets its OWN liner color, so the user can see the
-            shape of the broader recommendation space, not just the winner. */}
-        {alts.length > 0 && (
-          <div style={revealStyle(360)}>
-            <Section title="Also consider" accent={linerColor}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {alts.map((a, i) => {
-                  const ac = window.LINER_COLOR[a.id] || BLACK;
-                  return (
-                    <div key={a.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '12px 0',
-                      borderTop: i === 0 ? 'none' : '1px solid rgba(39,39,39,.06)',
-                    }}>
-                      <span style={{
-                        width: 10, height: 10, borderRadius: 999,
-                        background: ac, flexShrink: 0,
-                      }} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: BLACK }}>
-                          ZipFit <span style={{ color: ac }}>{a.name}</span>
-                        </div>
-                        <div style={{ fontSize: 13, color: '#7A7670', marginTop: 2, lineHeight: 1.4 }}>{a.tag}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Section>
-          </div>
-        )}
 
         {/* Confirmation that we'll send the result to the email captured upfront */}
         {answers.lead && answers.lead.email && (
