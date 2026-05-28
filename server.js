@@ -465,6 +465,34 @@ function slug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Odoo chatter helper
+// Finds the existing crm.lead for an email and appends a timestamped internal
+// note. Called by all three webhooks so every post-sale event lands in Odoo.
+// ─────────────────────────────────────────────────────────────────────────
+async function postOdooNote(email, noteHtml) {
+  const url  = process.env.ODOO_URL;
+  const db   = process.env.ODOO_DB;
+  const user = process.env.ODOO_USER;
+  const key  = process.env.ODOO_API_KEY;
+  if (!url || !db || !user || !key) return null;
+
+  const uid = await xmlrpc(`${url}/xmlrpc/2/common`, 'authenticate', [db, user, key, {}]);
+  if (!uid) throw new Error('odoo_auth_failed');
+
+  // Find the most recent quiz lead for this email.
+  const leadId = await xmlrpc(`${url}/xmlrpc/2/object`, 'execute_kw', [
+    db, uid, key, 'crm.lead', 'search', [[['email_from', '=', email]]], { limit: 1 },
+  ]);
+  if (!leadId) return null; // customer never completed the quiz — skip
+
+  await xmlrpc(`${url}/xmlrpc/2/object`, 'execute_kw', [
+    db, uid, key, 'crm.lead', 'message_post', [[leadId]],
+    { body: noteHtml, message_type: 'comment', subtype_xmlid: 'mail.mt_note' },
+  ]);
+  return { ok: true, leadId };
+}
+
 // ── Webhook helpers ───────────────────────────────────────────────────────
 
 // Returns true when SHOPIFY_WEBHOOK_SECRET is unset (dev) OR signature matches.
@@ -583,9 +611,23 @@ app.post('/webhooks/shopify/orders-paid', async (req, res) => {
     fit_quiz_purchase_date:             new Date().toISOString(),
   };
 
-  await trackKlaviyoEvent(email, eventName, baseProps, profilePatch).catch((e) =>
-    console.warn('[webhook/orders-paid] klaviyo error', e.message),
-  );
+  const outcomeIcon = boughtRecommended ? '✅' : '⚠️';
+  const odooNote = [
+    `<p><strong>${outcomeIcon} Fit Quiz — Purchase</strong></p>`,
+    `<p><strong>Order:</strong> ${order.name || order.id} &nbsp;·&nbsp; ${new Date().toLocaleDateString()}</p>`,
+    `<p><strong>Purchased:</strong> ${purchasedLiners.join(', ')}</p>`,
+    recommendedId ? `<p><strong>Recommended:</strong> ${recommendedId}</p>` : '',
+    boughtRecommended
+      ? '<p>✅ Bought the recommendation</p>'
+      : recommendedId ? '<p>⚠️ Bought a different liner than recommended</p>' : '',
+  ].filter(Boolean).join('\n');
+
+  await Promise.allSettled([
+    trackKlaviyoEvent(email, eventName, baseProps, profilePatch)
+      .catch((e) => console.warn('[webhook/orders-paid] klaviyo error', e.message)),
+    postOdooNote(email, odooNote)
+      .catch((e) => console.warn('[webhook/orders-paid] odoo error', e.message)),
+  ]);
 
   console.log('[webhook/orders-paid]', email, eventName, purchasedLiners);
 });
@@ -613,12 +655,22 @@ app.post('/webhooks/shopify/refunds-created', async (req, res) => {
     fit_quiz_returned_liner: refundedLiners.join(', '),
   };
 
-  await trackKlaviyoEvent(
-    email,
-    'Fit Quiz — Liner Returned',
-    { refund_id: refund.id, order_id: refund.order_id, returned_liners: refundedLiners },
-    profilePatch,
-  ).catch((e) => console.warn('[webhook/refunds] klaviyo error', e.message));
+  const odooNote = [
+    `<p><strong>🔄 Fit Quiz — Liner Return</strong></p>`,
+    `<p><strong>Refund ID:</strong> ${refund.id} &nbsp;·&nbsp; ${new Date().toLocaleDateString()}</p>`,
+    `<p><strong>Returned:</strong> ${refundedLiners.join(', ')}</p>`,
+  ].join('\n');
+
+  await Promise.allSettled([
+    trackKlaviyoEvent(
+      email,
+      'Fit Quiz — Liner Returned',
+      { refund_id: refund.id, order_id: refund.order_id, returned_liners: refundedLiners },
+      profilePatch,
+    ).catch((e) => console.warn('[webhook/refunds] klaviyo error', e.message)),
+    postOdooNote(email, odooNote)
+      .catch((e) => console.warn('[webhook/refunds] odoo error', e.message)),
+  ]);
 
   console.log('[webhook/refunds-created]', email, refundedLiners);
 });
@@ -635,12 +687,23 @@ app.post('/webhooks/reviews', async (req, res) => {
 
   const linerId = product_handle ? (LINER_HANDLES[product_handle.toLowerCase()] || null) : null;
 
-  await trackKlaviyoEvent(
-    email,
-    'Fit Quiz — Review Submitted',
-    { review_id, product_handle, liner_id: linerId, rating },
-    linerId ? { fit_quiz_review_rating: rating, fit_quiz_review_liner: linerId } : null,
-  ).catch((e) => console.warn('[webhook/reviews] klaviyo error', e.message));
+  const stars = rating ? `${rating}/5` : '—';
+  const odooNote = [
+    `<p><strong>⭐ Fit Quiz — Review Submitted</strong></p>`,
+    `<p><strong>Product:</strong> ${product_handle || '—'} &nbsp;·&nbsp; <strong>Rating:</strong> ${stars}</p>`,
+    review_id ? `<p><strong>Review ID:</strong> ${review_id}</p>` : '',
+  ].filter(Boolean).join('\n');
+
+  await Promise.allSettled([
+    trackKlaviyoEvent(
+      email,
+      'Fit Quiz — Review Submitted',
+      { review_id, product_handle, liner_id: linerId, rating },
+      linerId ? { fit_quiz_review_rating: rating, fit_quiz_review_liner: linerId } : null,
+    ).catch((e) => console.warn('[webhook/reviews] klaviyo error', e.message)),
+    postOdooNote(email, odooNote)
+      .catch((e) => console.warn('[webhook/reviews] odoo error', e.message)),
+  ]);
 
   console.log('[webhook/reviews]', email, product_handle, rating);
 });
