@@ -20,6 +20,11 @@
 //   ODOO_DB                Odoo database name
 //   ODOO_USER              Odoo login (email)
 //   ODOO_API_KEY           Odoo API key (Settings → Users → Developer)
+//   SHOPIFY_WEBHOOK_SECRET  Shared secret from Shopify → Settings → Notifications → Webhooks
+//                          Used to verify HMAC-SHA256 on incoming webhook payloads.
+//                          Register these topics pointing at this server:
+//                            orders/paid     → /webhooks/shopify/orders-paid
+//                            refunds/create  → /webhooks/shopify/refunds-created
 //   ALLOWED_ORIGINS        Comma-separated list of allowed origins for CORS
 //                          (e.g. https://zipfit.com,https://www.zipfit.com)
 //
@@ -28,14 +33,28 @@
 
 import express from 'express';
 import morgan from 'morgan';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 
+// Maps Shopify product handle / title keywords → internal liner IDs.
+// Used by the order webhook to detect which ZipFit liner(s) a customer purchased.
+const LINER_HANDLES = {
+  'gara-lv':   'gara_lv',  'gara lv':   'gara_lv',
+  'gara-hv':   'gara_hv',  'gara hv':   'gara_hv',
+  'espresso':  'espresso',
+  'gft':       'gft',
+  'freeride':  'freeride',
+  'corsa':     'corsa',
+  'workhorse': 'workhorse',
+};
+
 const app = express();
-app.use(express.json({ limit: '256kb' }));
+// Capture raw body so Shopify webhook HMAC can be verified against the exact bytes received.
+app.use(express.json({ limit: '256kb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(morgan('tiny'));
 
 // ── CORS ──────────────────────────────────────────────────────────────────
@@ -445,6 +464,186 @@ function escapeXml(s) {
 function slug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
+
+// ── Webhook helpers ───────────────────────────────────────────────────────
+
+// Returns true when SHOPIFY_WEBHOOK_SECRET is unset (dev) OR signature matches.
+function verifyShopifyWebhook(req) {
+  const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
+  if (!secret) return true;
+  const hmac = req.headers['x-shopify-hmac-sha256'];
+  if (!hmac || !req.rawBody) return false;
+  const computed = crypto.createHmac('sha256', secret).update(req.rawBody).digest('base64');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(hmac, 'base64'), Buffer.from(computed, 'base64'));
+  } catch { return false; }
+}
+
+// Returns array of internal liner IDs found in a Shopify order's line items.
+function detectLinersInOrder(lineItems = []) {
+  const found = new Set();
+  for (const item of lineItems) {
+    const text = [item.title, item.sku, item.variant_title]
+      .filter(Boolean).join(' ').toLowerCase();
+    for (const [handle, id] of Object.entries(LINER_HANDLES)) {
+      if (text.includes(handle)) found.add(id);
+    }
+  }
+  return [...found];
+}
+
+// Fetches the Klaviyo profile for an email and returns { id, properties } or null.
+async function getKlaviyoProfile(email) {
+  const apiKey = process.env.KLAVIYO_API_KEY;
+  if (!apiKey) return null;
+  const res = await fetch(
+    `https://a.klaviyo.com/api/profiles/?filter=equals(email,"${encodeURIComponent(email)}")&fields[profile]=id,properties`,
+    { headers: { 'Authorization': `Klaviyo-API-Key ${apiKey}`, 'revision': '2023-12-15' } },
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const profile = data.data?.[0];
+  return profile ? { id: profile.id, properties: profile.attributes?.properties || {} } : null;
+}
+
+// Tracks a Klaviyo event and optionally PATCHes profile properties.
+async function trackKlaviyoEvent(email, eventName, props, profilePatch = null) {
+  const apiKey = process.env.KLAVIYO_API_KEY;
+  if (!apiKey) return;
+  const headers = { 'Authorization': `Klaviyo-API-Key ${apiKey}`, 'Content-Type': 'application/json', 'revision': '2023-12-15' };
+
+  await fetch('https://a.klaviyo.com/api/events/', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      data: {
+        type: 'event',
+        attributes: {
+          metric: { data: { type: 'metric', attributes: { name: eventName } } },
+          profile: { data: { type: 'profile', attributes: { email } } },
+          properties: props,
+          value: 1,
+          time: new Date().toISOString(),
+        },
+      },
+    }),
+  });
+
+  if (profilePatch) {
+    const profile = await getKlaviyoProfile(email);
+    if (profile?.id) {
+      await fetch(`https://a.klaviyo.com/api/profiles/${profile.id}/`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          data: { type: 'profile', id: profile.id, attributes: { properties: profilePatch } },
+        }),
+      });
+    }
+  }
+}
+
+// ── Webhook: order paid ───────────────────────────────────────────────────
+// Shopify fires this when an order is fully paid.
+// Detects whether the customer purchased their recommended liner or a different one.
+// Register in Shopify: orders/paid → https://your-domain/webhooks/shopify/orders-paid
+app.post('/webhooks/shopify/orders-paid', async (req, res) => {
+  if (!verifyShopifyWebhook(req)) return res.status(401).send('Unauthorized');
+  res.sendStatus(200); // acknowledge immediately; Shopify retries on failure
+
+  const order = req.body;
+  const email = order.email || order.customer?.email;
+  if (!email) return;
+
+  const purchasedLiners = detectLinersInOrder(order.line_items);
+  if (!purchasedLiners.length) return; // no ZipFit liner in this order
+
+  const profile = await getKlaviyoProfile(email).catch(() => null);
+  const recommendedId = profile?.properties?.fit_quiz_liner_id;
+
+  const boughtRecommended = recommendedId && purchasedLiners.includes(recommendedId);
+  const boughtDifferent   = recommendedId && !boughtRecommended;
+
+  const baseProps = {
+    order_id:             order.id,
+    order_name:           order.name,
+    purchased_liners:     purchasedLiners,
+    recommended_liner_id: recommendedId || null,
+    bought_recommendation: boughtRecommended,
+  };
+
+  const eventName = boughtRecommended
+    ? 'Fit Quiz — Bought Recommendation'
+    : 'Fit Quiz — Bought Different Liner';
+
+  const profilePatch = {
+    fit_quiz_purchased_liner:           purchasedLiners.join(', '),
+    fit_quiz_purchased_recommendation:  boughtRecommended,
+    fit_quiz_purchased_different:       boughtDifferent,
+    fit_quiz_purchase_date:             new Date().toISOString(),
+  };
+
+  await trackKlaviyoEvent(email, eventName, baseProps, profilePatch).catch((e) =>
+    console.warn('[webhook/orders-paid] klaviyo error', e.message),
+  );
+
+  console.log('[webhook/orders-paid]', email, eventName, purchasedLiners);
+});
+
+// ── Webhook: refund created ───────────────────────────────────────────────
+// Fires when Shopify processes a refund (full or partial).
+// Flags liner returns in Klaviyo so the team can follow up.
+// Register: refunds/create → https://your-domain/webhooks/shopify/refunds-created
+app.post('/webhooks/shopify/refunds-created', async (req, res) => {
+  if (!verifyShopifyWebhook(req)) return res.status(401).send('Unauthorized');
+  res.sendStatus(200);
+
+  const refund = req.body;
+  const email = refund.order?.email || refund.order_email;
+  if (!email) return;
+
+  const refundedLiners = detectLinersInOrder(
+    (refund.refund_line_items || []).map((rli) => rli.line_item).filter(Boolean),
+  );
+  if (!refundedLiners.length) return;
+
+  const profilePatch = {
+    fit_quiz_returned:       true,
+    fit_quiz_return_date:    new Date().toISOString(),
+    fit_quiz_returned_liner: refundedLiners.join(', '),
+  };
+
+  await trackKlaviyoEvent(
+    email,
+    'Fit Quiz — Liner Returned',
+    { refund_id: refund.id, order_id: refund.order_id, returned_liners: refundedLiners },
+    profilePatch,
+  ).catch((e) => console.warn('[webhook/refunds] klaviyo error', e.message));
+
+  console.log('[webhook/refunds-created]', email, refundedLiners);
+});
+
+// ── Webhook: review submitted ─────────────────────────────────────────────
+// Generic stub compatible with Okendo, Judge.me, and Yotpo (all can POST to a URL).
+// Register your review app's webhook to POST to /webhooks/reviews.
+// Expected body: { email, product_handle, rating, review_id }
+app.post('/webhooks/reviews', async (req, res) => {
+  res.sendStatus(200);
+
+  const { email, product_handle, rating, review_id } = req.body || {};
+  if (!email) return;
+
+  const linerId = product_handle ? (LINER_HANDLES[product_handle.toLowerCase()] || null) : null;
+
+  await trackKlaviyoEvent(
+    email,
+    'Fit Quiz — Review Submitted',
+    { review_id, product_handle, liner_id: linerId, rating },
+    linerId ? { fit_quiz_review_rating: rating, fit_quiz_review_liner: linerId } : null,
+  ).catch((e) => console.warn('[webhook/reviews] klaviyo error', e.message));
+
+  console.log('[webhook/reviews]', email, product_handle, rating);
+});
 
 app.listen(PORT, () => {
   console.log(`ZipFit Fit Quiz listening on :${PORT}`);
