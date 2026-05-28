@@ -670,7 +670,7 @@
   }
 
   // ─── main quiz ──────────────────────────────────────────────────────
-  const STAGES = ['intro', 'lead', 'boot', 'ff', 'ank', 'cal', 'fit_problem', 'ability', 'result'];
+  const STAGES = ['intro', 'lead', 'boot', 'ff', 'ins', 'ank', 'cal', 'fit_problem', 'ability', 'result'];
 
   // Decode a ?r= result token so follow-up email links land directly on the
   // result screen. Returns a partial answers object or null if absent/invalid.
@@ -871,7 +871,7 @@
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 28 }}>
           <button onClick={onStart} style={btnPrimary(false)}>Begin →</button>
-          <span style={{ fontSize: 13, color: '#7A7670' }}>~ 2 minutes · 6 steps</span>
+          <span style={{ fontSize: 13, color: '#7A7670' }}>~ 2 minutes · 7 steps</span>
         </div>
       </div>
     );
@@ -923,7 +923,7 @@
           boot: answers.boot || null,
           match: { id: top.id, name: top.name },
           answers: {
-            ff: answers.ff, ank: answers.ank, cal: answers.cal,
+            ff: answers.ff, ins: answers.ins, ank: answers.ank, cal: answers.cal,
             fit_problem: answers.fit_problem, ability: answers.ability,
           },
           submittedAt: new Date().toISOString(),
@@ -1025,6 +1025,32 @@
             ))}
           </div>
         )}
+
+        {/* Shim / footbed recommendations */}
+        {(() => {
+          const shims = window.computeShimRecommendation(answers);
+          if (!shims.length) return null;
+          return (
+            <div style={revealStyle(185)}>
+              <Section title="Bootfitter accessories" accent={linerColor}>
+                <p style={{ fontSize: 13, color: '#7A7670', margin: '0 0 12px', lineHeight: 1.45 }}>
+                  Based on your foot profile, your bootfitter should also assess the following:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {shims.map((s) => (
+                    <div key={s.type} style={{ background: wash, borderRadius: 8, padding: '12px 14px' }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: BLACK, marginBottom: 4 }}>
+                        {s.icon} {s.title}
+                      </div>
+                      <p style={{ fontSize: 13, color: '#4A4A4A', margin: '0 0 6px', lineHeight: 1.5, fontWeight: 500 }}>{s.summary}</p>
+                      <p style={{ fontSize: 13, color: '#7A7670', margin: 0, lineHeight: 1.5 }}>{s.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            </div>
+          );
+        })()}
 
         {/* Liner stats */}
         <div style={revealStyle(210)}>

@@ -46,6 +46,7 @@ var SVGS={ff1:svgFF1,ff2:svgFF2,ff3:svgFF3,ff4:svgFF4,a1:svgA1,a2:svgA2,a3:svgA3
 var QS=[
   {id:'boot',sec:'Your Shell',lbl:'Boot Selection',txt:'What ski boot shell are you fitting?',hint:'Select brand, then filter by flex to narrow the model list.',type:'boot'},
   {id:'ff',sec:'Your Foot',lbl:'Forefoot Width',txt:'How wide is your forefoot?',hint:'Think about the widest part across the ball of your foot. All ZipFit liners accommodate a full range of forefoot widths — this helps us understand your foot better.',type:'anat',cols:'f4',scored:false,opts:[{s:'ff1',l:'Narrow',d:'Shoes feel too wide',v:'narrow'},{s:'ff2',l:'Medium',d:'Standard width fits right',v:'medium'},{s:'ff3',l:'Wide',d:'Standard shoes feel snug',v:'wide'},{s:'ff4',l:'Very Wide',d:'Always need wide sizing',v:'vwide'}]},
+  {id:'ins',sec:'Your Foot',lbl:'Arch Height',txt:'How high is your arch?',hint:'Wet your foot and step on cardboard. A full footprint with little curve on the inside = flat/low arch. A footprint with a moderate indent = medium. A footprint with a very thin strip or big gap in the middle = high arch.',type:'anat',cols:'f3',scored:false,opts:[{s:'a1',l:'Low / Flat',d:'Full footprint, foot rolls inward',v:'low'},{s:'a2',l:'Medium',d:'Moderate arch, normal footprint',v:'medium'},{s:'a3',l:'High',d:'Distinct arch, thin strip on paper',v:'high'}]},
   {id:'ank',sec:'Your Foot',lbl:'Ankle Volume',txt:'How much volume does your ankle have?',sub:'Grab a soft tape measure for the best result.',hint:'Measure with a soft tape from one side of your heel to the other (around the back). If this is less than your foot length = small ankle. Equal to your foot length = average ankle. More than your foot length = large ankle.',type:'anat',cols:'f3',scored:true,opts:[{s:'ank1',l:'Bony / Lean',d:'Prominent bones, lean profile',v:'low'},{s:'ank2',l:'Average',d:'Moderate tissue around ankle',v:'medium'},{s:'ank3',l:'Full / Fleshy',d:'Lots of soft tissue at ankle',v:'high'}]},
   {id:'cal',sec:'Your Foot',lbl:'Calf and Lower Leg',txt:'How would you describe your calf and lower leg?',sub:'Grab a soft tape measure for the best result.',hint:'Measure your foot length in cm and add 10cm — that is your average calf benchmark. Measure your calf circumference at the widest point. Within 2cm either side of that number = average. More than 2cm above = full / muscular. More than 2cm below = lean / narrow.',type:'anat',cols:'f3',scored:true,opts:[{s:'c1',l:'Lean / Narrow',d:'Slim lower leg',v:'low'},{s:'c2',l:'Medium',d:'Average calf muscle',v:'medium'},{s:'c3',l:'Full / Muscular',d:'Developed calf, full lower leg',v:'high'}]},
   {id:'fit_problem',sec:'Your Foot',lbl:'Fit Challenges',txt:'Do you have any common fit problems?',hint:'This will not change your liner recommendation — we just want to make sure you know your liner will help, and point you to the right resources.',type:'choice',scored:false,opts:[
@@ -359,6 +360,36 @@ window.LINER_SHOP_URL = {
   gara_hv:  'https://zipfit.com/products/gara-hv',
   freeride: 'https://zipfit.com/products/freeride',
   workhorse:'https://zipfit.com/products/workhorse',
+};
+
+// Returns an array of shim/footbed recommendations based on foot profile answers.
+// Each entry has: { type, icon, title, summary, detail }
+window.computeShimRecommendation = function (answers) {
+  var shims = [];
+
+  // Bony / lean ankle → ankle shims
+  if (answers.ank === 'low') {
+    shims.push({
+      type: 'ankle',
+      icon: '🦴',
+      title: 'Ankle Shims',
+      summary: 'Your bony, lean ankles leave dead space between the ankle bone and the shell that causes side-to-side play and ankle bite.',
+      detail: 'Your ZipFit liner will cork-mold around your ankles to create a custom interface. If lateral play or ankle bite persists after break-in, thin cork or foam ankle shims placed directly against the malleolus fill the remaining gap and stop rocking. Ask your bootfitter about shimming both sides.',
+    });
+  }
+
+  // Flat / low arch → custom footbed
+  if (answers.ins === 'low') {
+    shims.push({
+      type: 'footbed',
+      icon: '🦶',
+      title: 'Custom Footbed',
+      summary: 'A flat or low arch tends to pronate (roll inward) inside a ski boot, reducing edge-to-edge power transfer.',
+      detail: 'A custom molded footbed supports your arch in its neutral position, correcting pronation and aligning your foot directly over the shell\'s edge. Combined with your ZipFit liner this is one of the highest-impact upgrades for flat-footed skiers — your bootfitter can mold one in minutes.',
+    });
+  }
+
+  return shims;
 };
 
 // Convenience: get the top recommendation + valid alternates as a structured result.
