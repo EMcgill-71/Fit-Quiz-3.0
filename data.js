@@ -200,6 +200,9 @@ function scoreLiners(){
       s+=95;
       if(ans.ank==='low')s+=20;
       else if(ans.ank==='high')s-=25;
+      // flat arch pronates and needs more volume → push toward HV
+      if(ans.ins==='low')s-=25;
+      else if(ans.ins==='high')s+=20;
     }
     // Gara HV: 100-104mm, lean/avg calf, leans toward fuller ankles
     if(l.id==='gara_hv'){
@@ -208,6 +211,9 @@ function scoreLiners(){
       s+=95;
       if(ans.ank==='high')s+=20;
       else if(ans.ank==='low')s-=25;
+      // flat arch pronates and spreads → benefits from HV volume
+      if(ans.ins==='low')s+=25;
+      else if(ans.ins==='high')s-=20;
     }
     // Freeride: 100-106mm, +30 large calf, +12 tour
     if(l.id==='freeride'){
