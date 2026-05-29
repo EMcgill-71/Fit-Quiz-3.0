@@ -184,7 +184,7 @@ function scoreLiners(){
     if(l.id==='corsa'){if(last===0||last>94)return{l:l,s:-999};if(boot.w)s-=80;s+=100;}
     // Espresso: ultralight LV touring (walk=1, last<=100, LV vol)
     if(l.id==='espresso'){
-      var isUL=boot.w&&last>0&&last<=100&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
+      var isUL=boot.w&&last>0&&last<=98&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
       if(!isUL)return{l:l,s:-999};s+=92;
     }
     // GFT: 96mm DH or any touring/crossover shell
