@@ -59,7 +59,7 @@ var QS=[
     {ic:'🦴',l:'Ankle bite',d:'Pain on the sides of my ankles',v:'ankle_bite'},
     {ic:'✓',l:'No major issues',d:'My current fit is generally comfortable',v:'none'}
   ]},
-  {id:'terrain',sec:'Your Skiing',lbl:'Where You Ski',txt:'Where do you spend most of your time on the mountain?',hint:'Choose the option that best describes a typical ski day.',type:'choice',scored:false,opts:[
+  {id:'terrain',sec:'Your Skiing',lbl:'Where You Ski',txt:'Where do you spend most of your time on the mountain?',hint:'Select all that apply.',type:'choice',multi:true,scored:false,opts:[
     {ic:'🏔️',l:'All Mountain',d:'Mix of groomers, off-piste, and variable conditions',v:'all_mountain'},
     {ic:'🎿',l:'Carving',d:'Mostly groomed runs, focused on edge-to-edge performance',v:'carving'},
     {ic:'🛹',l:'Park',d:'Freestyle, features, and terrain park laps',v:'park'},
@@ -188,7 +188,8 @@ function goBack(){if(step>0){step--;render();window.scrollTo({top:0,behavior:'sm
 function scoreLiners(){
   var boot=ans.boot||{},vol=boot.v||'MV',last=boot.l||0;
   // True only when the user has a walk-mode boot AND confirmed touring is their primary use.
-  var isTourPrimary=!!(boot.w&&ans.terrain==='touring'&&ans.touring_primary==='yes');
+  var terrainArr=Array.isArray(ans.terrain)?ans.terrain:(ans.terrain?[ans.terrain]:[]);
+  var isTourPrimary=!!(boot.w&&terrainArr.indexOf('touring')>-1&&ans.touring_primary==='yes');
   return LINERS.map(function(l){
     var s=0;
     // TIER 1 — SHELL GATES (dominant, ensures right liner wins for the shell)

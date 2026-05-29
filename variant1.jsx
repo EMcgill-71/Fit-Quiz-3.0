@@ -690,9 +690,10 @@
 
     const stage = STAGES[step];
     // Visible stages exclude intro/lead/result and touring_primary when terrain !== 'touring'
+    const terrainHasTour = (() => { const t = answers.terrain; return Array.isArray(t) ? t.indexOf('touring') > -1 : t === 'touring'; })();
     const visibleQStages = STAGES.filter((s) => {
       if (s === 'intro' || s === 'lead' || s === 'result') return false;
-      if (s === 'touring_primary' && answers.terrain !== 'touring') return false;
+      if (s === 'touring_primary' && !terrainHasTour) return false;
       return true;
     });
     const totalQs = visibleQStages.length;
@@ -708,8 +709,8 @@
       }
       if (stage === 'boot') return !!answers.boot;
       if (stage === 'result') return false;
-      if (stage === 'fit_problem') {
-        const a = answers.fit_problem;
+      if (stage === 'fit_problem' || stage === 'terrain') {
+        const a = answers[stage];
         return Array.isArray(a) ? a.length > 0 : a !== undefined;
       }
       return answers[stage] !== undefined;
@@ -717,15 +718,15 @@
 
     const setAns = (k, v) => setAnswers((a) => ({ ...a, [k]: v }));
 
-    // Skip touring_primary when navigating forward/back if terrain is not 'touring'
+    // Skip touring_primary when navigating forward/back if terrain doesn't include 'touring'
     const next = () => setStep((s) => {
       let n = s + 1;
-      if (STAGES[n] === 'touring_primary' && answers.terrain !== 'touring') n++;
+      if (STAGES[n] === 'touring_primary' && !terrainHasTour) n++;
       return Math.min(n, STAGES.length - 1);
     });
     const back = () => setStep((s) => {
       let n = s - 1;
-      if (STAGES[n] === 'touring_primary' && answers.terrain !== 'touring') n--;
+      if (STAGES[n] === 'touring_primary' && !terrainHasTour) n--;
       return Math.max(0, n);
     });
 
@@ -833,7 +834,29 @@
                   </div>
                 )}
 
-                {q.type === 'choice' && q.id !== 'fit_problem' && (
+                {q.type === 'choice' && q.id === 'terrain' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670', marginBottom: 2 }}>
+                      Select all that apply
+                    </div>
+                    {q.opts.map((o, i) => {
+                      const current = Array.isArray(answers.terrain) ? answers.terrain : (answers.terrain ? [answers.terrain] : []);
+                      const isActive = current.indexOf(o.v) > -1;
+                      const toggle = () => {
+                        const next = isActive ? current.filter((v) => v !== o.v) : [...current, o.v];
+                        setAns('terrain', next);
+                      };
+                      return (
+                        <ChoiceCard key={String(o.v)} icon={o.ic} label={o.l} desc={o.d}
+                          accent={accentForIndex(i, q.opts.length)}
+                          active={isActive}
+                          onClick={toggle} />
+                      );
+                    })}
+                  </div>
+                )}
+
+                {q.type === 'choice' && q.id !== 'fit_problem' && q.id !== 'terrain' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {q.opts.map((o, i) => (
                       <ChoiceCard key={String(o.v)} icon={o.ic} label={o.l} desc={o.d}
