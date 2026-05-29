@@ -995,6 +995,9 @@
         {footProfile.length > 0 && (
           <div style={revealStyle(110)}>
             <Section title="Your foot profile" accent={linerColor}>
+              {boot.m && (
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: BLACK }}>{boot.b} · {boot.m}</div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
                 {footProfile.map((r) => <Stat key={r.l} l={r.l} v={r.v} bg={wash} />)}
               </div>
