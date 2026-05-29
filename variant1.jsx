@@ -990,19 +990,6 @@
           </div>
         </div>
 
-        {/* Shell stats */}
-        {boot.m && (
-          <div style={revealStyle(60)}>
-            <Section title="Shell" accent={linerColor}>
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 10 }}>{boot.b} · {boot.m}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                <Stat l="Last" v={boot.l ? boot.l + 'mm' : '—'} bg={wash} />
-                <Stat l="Volume" v={boot.v && boot.v !== 'nan' ? boot.v : '—'} bg={wash} />
-                <Stat l="Flex" v={boot.f || '—'} bg={wash} />
-              </div>
-            </Section>
-          </div>
-        )}
 
         {/* Foot profile */}
         {footProfile.length > 0 && (
