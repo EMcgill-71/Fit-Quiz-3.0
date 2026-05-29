@@ -1032,7 +1032,10 @@
           <div style={revealStyle(110)}>
             <Section title="Your foot profile" accent={linerColor}>
               {boot.m && (
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: BLACK }}>{boot.b} · {boot.m}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: BLACK }}>
+                  {boot.b} · {boot.m}
+                  {boot.yr && <span style={{ fontWeight: 400, color: '#7A7670', marginLeft: 6 }}>({boot.yr})</span>}
+                </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
                 {footProfile.map((r) => <Stat key={r.l} l={r.l} v={r.v} bg={wash} />)}
