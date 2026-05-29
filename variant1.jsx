@@ -670,7 +670,7 @@
   }
 
   // ─── main quiz ──────────────────────────────────────────────────────
-  const STAGES = ['intro', 'lead', 'boot', 'ff', 'ins', 'ank', 'cal', 'fit_problem', 'ability', 'result'];
+  const STAGES = ['intro', 'lead', 'boot', 'ff', 'ins', 'ank', 'cal', 'fit_problem', 'terrain', 'touring_primary', 'ability', 'result'];
 
   // Decode a ?r= result token so follow-up email links land directly on the
   // result screen. Returns a partial answers object or null if absent/invalid.
@@ -689,10 +689,14 @@
     const [answers, setAnswers] = useState(() => prefill || {});
 
     const stage = STAGES[step];
-    // Real quiz questions (excludes intro, lead, result)
-    const totalQs = STAGES.length - 3;
-    // 1-indexed step within the real questions (boot = 1, ff = 2, ...)
-    const stepNum = Math.max(0, step - 1);
+    // Visible stages exclude intro/lead/result and touring_primary when terrain !== 'touring'
+    const visibleQStages = STAGES.filter((s) => {
+      if (s === 'intro' || s === 'lead' || s === 'result') return false;
+      if (s === 'touring_primary' && answers.terrain !== 'touring') return false;
+      return true;
+    });
+    const totalQs = visibleQStages.length;
+    const stepNum = visibleQStages.indexOf(stage) + 1; // 1-indexed, 0 when on non-question stage
     const q = window.getQ(stage);
 
     const canAdvance = (() => {
@@ -713,8 +717,17 @@
 
     const setAns = (k, v) => setAnswers((a) => ({ ...a, [k]: v }));
 
-    const next = () => setStep((s) => Math.min(s + 1, STAGES.length - 1));
-    const back = () => setStep((s) => Math.max(0, s - 1));
+    // Skip touring_primary when navigating forward/back if terrain is not 'touring'
+    const next = () => setStep((s) => {
+      let n = s + 1;
+      if (STAGES[n] === 'touring_primary' && answers.terrain !== 'touring') n++;
+      return Math.min(n, STAGES.length - 1);
+    });
+    const back = () => setStep((s) => {
+      let n = s - 1;
+      if (STAGES[n] === 'touring_primary' && answers.terrain !== 'touring') n--;
+      return Math.max(0, n);
+    });
 
     // Every question now waits for the Continue button — no auto-advance.
     const pickAndMaybeAdvance = (k, v) => {
@@ -871,7 +884,7 @@
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 28 }}>
           <button onClick={onStart} style={btnPrimary(false)}>Begin →</button>
-          <span style={{ fontSize: 13, color: '#7A7670' }}>~ 2 minutes · 7 steps</span>
+          <span style={{ fontSize: 13, color: '#7A7670' }}>~ 2 minutes · 8 steps</span>
         </div>
       </div>
     );

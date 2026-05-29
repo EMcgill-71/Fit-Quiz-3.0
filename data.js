@@ -59,6 +59,16 @@ var QS=[
     {ic:'🦴',l:'Ankle bite',d:'Pain on the sides of my ankles',v:'ankle_bite'},
     {ic:'✓',l:'No major issues',d:'My current fit is generally comfortable',v:'none'}
   ]},
+  {id:'terrain',sec:'Your Skiing',lbl:'Where You Ski',txt:'Where do you spend most of your time on the mountain?',hint:'Choose the option that best describes a typical ski day.',type:'choice',scored:false,opts:[
+    {ic:'🏔️',l:'All Mountain',d:'Mix of groomers, off-piste, and variable conditions',v:'all_mountain'},
+    {ic:'🎿',l:'Carving',d:'Mostly groomed runs, focused on edge-to-edge performance',v:'carving'},
+    {ic:'🛹',l:'Park',d:'Freestyle, features, and terrain park laps',v:'park'},
+    {ic:'🧭',l:'Touring',d:'Backcountry touring or lift-accessed sidecountry',v:'touring'},
+  ]},
+  {id:'touring_primary',sec:'Your Skiing',lbl:'Touring Focus',txt:'Do you spend most of your ski days touring?',hint:'This helps us prioritize liners built for uphill performance and low weight.',type:'choice',scored:false,opts:[
+    {ic:'✅',l:'Yes — mainly touring',d:'The majority of my ski days involve skinning up',v:'yes'},
+    {ic:'⛷️',l:'No — touring occasionally',d:'I tour some days but mostly ski resort or sidecountry',v:'no'},
+  ]},
   {id:'ability',sec:'Your Skiing',lbl:'Ability Level',txt:'How would you describe your skiing ability?',hint:'Be honest — there is a perfect liner for every level.',type:'choice',scored:true,opts:[{ic:'🎿',l:'Beginner',d:'Learning the basics',v:1},{ic:'⛷️',l:'Intermediate',d:'Comfortable on most trails',v:2},{ic:'🏔️',l:'Advanced',d:'Confident in all conditions',v:3},{ic:'🏁',l:'Expert',d:'Aggressive, max performance',v:4}]},
 ];
 
@@ -177,53 +187,54 @@ function goBack(){if(step>0){step--;render();window.scrollTo({top:0,behavior:'sm
 
 function scoreLiners(){
   var boot=ans.boot||{},vol=boot.v||'MV',last=boot.l||0;
+  // True only when the user has a walk-mode boot AND confirmed touring is their primary use.
+  var isTourPrimary=!!(boot.w&&ans.terrain==='touring'&&ans.touring_primary==='yes');
   return LINERS.map(function(l){
     var s=0;
     // TIER 1 — SHELL GATES (dominant, ensures right liner wins for the shell)
-    // Corsa: race shells <=94mm only — strong penalty for touring
-    if(l.id==='corsa'){if(last===0||last>94)return{l:l,s:-999};if(boot.w)s-=80;s+=100;}
-    // Espresso: ultralight LV touring (walk=1, last<=100, LV vol)
+    // Corsa: race shells <=94mm only — penalty when touring is primary use
+    if(l.id==='corsa'){if(last===0||last>94)return{l:l,s:-999};if(isTourPrimary)s-=80;s+=100;}
+    // Espresso: ultralight LV touring — only when touring is primary use
     if(l.id==='espresso'){
-      var isUL=boot.w&&last>0&&last<=98&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
+      var isUL=isTourPrimary&&last>0&&last<=98&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
       if(!isUL)return{l:l,s:-999};s+=92;
     }
-    // GFT: 96mm DH or any touring/crossover shell
-    // Touring gets a strong boost — primary recommendation for walk-mode boots
+    // GFT: 96mm DH or strong boost when touring is primary use
     if(l.id==='gft'){
       var isDH=!boot.w&&last===96;
-      var isTour=boot.w&&last>0&&last>=96;
+      var isTour=isTourPrimary&&last>0&&last>=96;
       if(isDH)s+=90;else if(isTour)s+=88;
     }
-    // Gara LV: 96-100mm, lean/avg calf — never for touring
+    // Gara LV: 96-100mm, lean/avg calf — penalty when touring is primary use
     // Full/fleshy ankle → LV (natural tissue already fills the shell; LV liner fits precisely)
     // Flat arch + lean ankle together → HV (compound signal overrides; lean alone → mild LV pull)
     if(l.id==='gara_lv'){
       if(last===0||last<96||last>100)return{l:l,s:-999};
-      if(boot.w)s-=80;
+      if(isTourPrimary)s-=80;
       if(ans.cal==='high')return{l:l,s:-999};
       s+=95;
       if(ans.ank==='high')s+=30;
       else if(ans.ank==='low'&&ans.ins==='low')s-=30;
       else if(ans.ank==='low')s+=15;
     }
-    // Gara HV: 100-104mm, lean/avg calf — never for touring
+    // Gara HV: 100-104mm, lean/avg calf — penalty when touring is primary use
     // Full/fleshy ankle → not HV (adding liner bulk over existing tissue overfills the shell)
     // Flat arch + lean ankle → HV (dead space from both signals; liner fill is needed)
     if(l.id==='gara_hv'){
       if(last===0||last<100||last>104)return{l:l,s:-999};
-      if(boot.w)s-=80;
+      if(isTourPrimary)s-=80;
       if(ans.cal==='high')return{l:l,s:-999};
       s+=95;
       if(ans.ank==='high')s-=30;
       else if(ans.ank==='low'&&ans.ins==='low')s+=30;
       else if(ans.ank==='low')s-=10;
     }
-    // Freeride: 100-106mm, +30 large calf, +12 tour
+    // Freeride: 100-106mm, +30 large calf, +12 when touring is primary use
     if(l.id==='freeride'){
       if(last>0&&(last<100||last>106))return{l:l,s:-999};
       s+=70;
       if(ans.cal==='high')s+=30;
-      if(boot.w)s+=12;
+      if(isTourPrimary)s+=12;
     }
     // Workhorse: 100-106mm, expert only
     if(l.id==='workhorse'){
