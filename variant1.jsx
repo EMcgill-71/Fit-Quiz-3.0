@@ -1133,6 +1133,26 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             Buy the {top.name}
           </a>
+          <a
+            href="https://zipfit.com/collections/liners"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', boxSizing: 'border-box', marginTop: 10,
+              background: 'transparent', color: BLACK,
+              border: `1.5px solid rgba(39,39,39,.22)`,
+              textDecoration: 'none', textAlign: 'center',
+              fontFamily: 'Inter, sans-serif', fontWeight: 600,
+              fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase',
+              borderRadius: 4, padding: '13px 24px',
+              transition: 'border-color .15s, background .15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(39,39,39,.05)'; e.currentTarget.style.borderColor = 'rgba(39,39,39,.4)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(39,39,39,.22)'; }}
+          >
+            Browse All Liners
+          </a>
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             {onBack && (
               <button onClick={onBack} style={{ flex: 1, background: 'transparent', color: BLACK, border: `1.5px solid rgba(39,39,39,.18)`, borderRadius: 4, padding: '11px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>← Edit answers</button>
