@@ -180,35 +180,36 @@ function scoreLiners(){
   return LINERS.map(function(l){
     var s=0;
     // TIER 1 — SHELL GATES (dominant, ensures right liner wins for the shell)
-    // Corsa: race shells <=94mm only
-    if(l.id==='corsa'){if(last===0||last>94)return{l:l,s:-999};s+=100;}
+    // Corsa: race shells <=94mm only — never for touring
+    if(l.id==='corsa'){if(last===0||last>94||boot.w)return{l:l,s:-999};s+=100;}
     // Espresso: ultralight LV touring (walk=1, last<=100, LV vol)
     if(l.id==='espresso'){
       var isUL=boot.w&&last>0&&last<=100&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
-      if(!isUL)return{l:l,s:-999};s+=80;
+      if(!isUL)return{l:l,s:-999};s+=92;
     }
     // GFT: 96mm DH or any touring/crossover shell
+    // Touring gets a strong boost — primary recommendation for walk-mode boots
     if(l.id==='gft'){
       var isDH=!boot.w&&last===96;
       var isTour=boot.w&&last>0&&last>=96;
-      if(isDH)s+=90;else if(isTour)s+=70;
+      if(isDH)s+=90;else if(isTour)s+=88;
     }
-    // Gara LV: 96-100mm, lean/avg calf
+    // Gara LV: 96-100mm, lean/avg calf — never for touring
     // Full/fleshy ankle → LV (natural tissue already fills the shell; LV liner fits precisely)
     // Flat arch + lean ankle together → HV (compound signal overrides; lean alone → mild LV pull)
     if(l.id==='gara_lv'){
-      if(last===0||last<96||last>100)return{l:l,s:-999};
+      if(last===0||last<96||last>100||boot.w)return{l:l,s:-999};
       if(ans.cal==='high')return{l:l,s:-999};
       s+=95;
       if(ans.ank==='high')s+=30;
       else if(ans.ank==='low'&&ans.ins==='low')s-=30;
       else if(ans.ank==='low')s+=15;
     }
-    // Gara HV: 100-104mm, lean/avg calf
+    // Gara HV: 100-104mm, lean/avg calf — never for touring
     // Full/fleshy ankle → not HV (adding liner bulk over existing tissue overfills the shell)
     // Flat arch + lean ankle → HV (dead space from both signals; liner fill is needed)
     if(l.id==='gara_hv'){
-      if(last===0||last<100||last>104)return{l:l,s:-999};
+      if(last===0||last<100||last>104||boot.w)return{l:l,s:-999};
       if(ans.cal==='high')return{l:l,s:-999};
       s+=95;
       if(ans.ank==='high')s-=30;
