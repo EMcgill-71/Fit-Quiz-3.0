@@ -1055,18 +1055,6 @@
           );
         })()}
 
-        {/* Liner stats */}
-        <div style={revealStyle(210)}>
-          <Section title="Liner stats" accent={linerColor}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              <Bar l="Performance" pct={top.p * 20} color={linerColor} bg={wash} />
-              <Bar l="Warmth" pct={top.w * 20} color={linerColor} bg={wash} />
-              <Stat l="Volume" v={top.vol} bg={wash} />
-              <Stat l="Fit style" v={fitStyle} bg={wash} />
-            </div>
-          </Section>
-        </div>
-
         {/* Why */}
         <div style={revealStyle(260)}>
           <Section title="Why this liner for you" accent={linerColor}>
