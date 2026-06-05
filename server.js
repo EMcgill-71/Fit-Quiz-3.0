@@ -92,11 +92,26 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
   const { lead, boot, answers, match } = payload;
 
   // Minimal validation.
-  if (!lead || !lead.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email)) {
+  if (!lead || !lead.name) {
+    return res.status(400).json({ ok: false, error: 'missing_name' });
+  }
+  // Contact: the user picks a preferred channel (email or text); we save both
+  // when given. Require at least the preferred channel, and validate any value
+  // that is present.
+  const hasEmail = !!lead.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email);
+  const hasPhone = !!normalizePhone(lead.phone);
+  if (lead.email && !hasEmail) {
     return res.status(400).json({ ok: false, error: 'invalid_email' });
   }
-  if (!lead.name) {
-    return res.status(400).json({ ok: false, error: 'missing_name' });
+  const pref = lead.contactPref === 'text' ? 'text' : 'email';
+  if (pref === 'email' && !hasEmail) {
+    return res.status(400).json({ ok: false, error: 'missing_email' });
+  }
+  if (pref === 'text' && !hasPhone) {
+    return res.status(400).json({ ok: false, error: 'missing_phone' });
+  }
+  if (!hasEmail && !hasPhone) {
+    return res.status(400).json({ ok: false, error: 'missing_contact' });
   }
   // Storing the quiz/foot/contact data requires explicit consent.
   if (!lead.dataConsent) {
@@ -104,7 +119,7 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
   }
 
   console.log('[fit-quiz/submit]', {
-    name: lead.name, email: lead.email,
+    name: lead.name, email: lead.email || '(none)', phone: lead.phone || '(none)', pref,
     match: match?.id, boot: boot?.b + ' ' + boot?.m,
   });
 
@@ -187,14 +202,19 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
 
   const resultUrl = buildResultUrl({ lead, boot, answers });
   const phoneE164 = normalizePhone(lead.phone);
+  const hasEmail = !!lead.email;
+  const contactPref = lead.contactPref === 'text' ? 'text' : 'email';
 
   const profileProps = {
     first_name: lead.name,
-    email: lead.email,
+    // Save both identifiers when present; the user only needs to provide their
+    // preferred one (email OR text). Klaviyo requires at least one.
+    ...(hasEmail ? { email: lead.email } : {}),
     // Klaviyo requires E.164 format; only attach when we could normalize it,
     // otherwise an invalid number would 400 the entire profile request.
     ...(phoneE164 ? { phone_number: phoneE164 } : {}),
     properties: {
+      fit_quiz_contact_pref: contactPref,
       fit_quiz_liner:        match?.name  || null,
       fit_quiz_liner_id:     match?.id    || null,
       fit_quiz_boot_brand:   boot?.b      || null,
@@ -259,7 +279,10 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
         type: 'event',
         attributes: {
           metric: { data: { type: 'metric', attributes: { name: 'Fit Quiz Completed' } } },
-          profile: { data: { type: 'profile', attributes: { email: lead.email } } },
+          profile: { data: { type: 'profile', attributes: {
+            ...(hasEmail ? { email: lead.email } : {}),
+            ...(phoneE164 ? { phone_number: phoneE164 } : {}),
+          } } },
           properties: {
             liner:        match?.name  || null,
             liner_id:     match?.id    || null,
@@ -287,12 +310,15 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
   // Uses the subscription endpoint (not a bare list-add) so Klaviyo logs proper
   // opt-in consent for email and/or SMS based on what the user actually agreed to.
   const listId = process.env.KLAVIYO_LIST_ID;
-  const wantEmail = !!lead.optIn;
+  const wantEmail = !!lead.optIn && hasEmail;
   const wantSms   = !!lead.smsConsent && !!phoneE164;
   if (listId && (wantEmail || wantSms)) {
-    const subAttrs = { email: lead.email };
+    const subAttrs = {};
     const subscriptions = {};
-    if (wantEmail) subscriptions.email = { marketing: { consent: 'SUBSCRIBED' } };
+    if (wantEmail) {
+      subAttrs.email = lead.email;
+      subscriptions.email = { marketing: { consent: 'SUBSCRIBED' } };
+    }
     if (wantSms) {
       subAttrs.phone_number = phoneE164;
       subscriptions.sms = { marketing: { consent: 'SUBSCRIBED' } };
@@ -355,9 +381,12 @@ async function pushToShopify({ lead, boot, match }) {
     { namespace: 'fit_quiz', key: 'volume',      value: String(boot?.v || ''), type: 'single_line_text_field' },
   ];
 
-  // ── Search for existing customer ────────────────────────────────────────
+  // ── Search for existing customer (by email when present, else by phone) ──
+  const searchQuery = lead.email
+    ? `email:${lead.email}`
+    : `phone:${phoneE164}`;
   const searchRes = await fetch(
-    `${base}/customers/search.json?query=email:${encodeURIComponent(lead.email)}&limit=1&fields=id,tags`,
+    `${base}/customers/search.json?query=${encodeURIComponent(searchQuery)}&limit=1&fields=id,tags`,
     { headers: authHeaders },
   );
   if (!searchRes.ok) {
@@ -391,7 +420,7 @@ async function pushToShopify({ lead, boot, match }) {
     body: JSON.stringify({
       customer: {
         first_name: lead.name,
-        email: lead.email,
+        ...(lead.email ? { email: lead.email } : {}),
         ...(phoneE164 ? { phone: phoneE164 } : {}),
         tags: newTags.join(', '),
         accepts_marketing: !!lead.optIn,
@@ -438,7 +467,7 @@ async function pushToOdoo({ lead, boot, answers, match }) {
   const leadVals = {
     name:         `Fit Quiz · ${lead.name} · ${match?.name || 'no match'}`,
     contact_name: lead.name,
-    email_from:   lead.email,
+    ...(lead.email ? { email_from: lead.email } : {}),
     ...(leadPhone ? { phone: leadPhone } : {}),
     type:         'lead',
     source_id:    false,
@@ -461,7 +490,9 @@ async function pushToOdoo({ lead, boot, answers, match }) {
       `Fit problems:  ${fitProblems}`,
       '',
       '── Lead Info ──────────────────────────',
+      `Email:            ${lead.email || '—'}`,
       `Phone:            ${leadPhone || '—'}`,
+      `Preferred contact: ${lead.contactPref === 'text' ? 'text' : 'email'}`,
       `Data storage consent: ${lead.dataConsent ? 'yes' : 'no'}`,
       `Email opt-in:     ${lead.optIn ? 'yes' : 'no'}`,
       `SMS opt-in:       ${lead.smsConsent ? 'yes' : 'no'}`,

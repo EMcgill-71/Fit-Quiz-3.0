@@ -705,8 +705,17 @@
       if (stage === 'lead') {
         const l = answers.lead;
         if (!l) return false;
-        const phoneOk = !l.phone || l.phone.replace(/\D/g, '').length >= 10;
-        return !!l.name && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((l.email || '').trim()) && phoneOk && !!l.dataConsent;
+        const pref = l.contactPref === 'text' ? 'text' : 'email';
+        const emailFilled = !!(l.email || '').trim();
+        const emailOk = emailFilled && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(l.email.trim());
+        const phoneFilled = !!l.phone;
+        const phoneOk = phoneFilled && l.phone.replace(/\D/g, '').length >= 10;
+        // Preferred channel must be valid; the other is optional but, if typed, must be valid.
+        const prefOk = pref === 'text' ? phoneOk : emailOk;
+        const otherOk = pref === 'text'
+          ? (!emailFilled || emailOk)
+          : (!phoneFilled || phoneOk);
+        return !!l.name && prefOk && otherOk && !!l.dataConsent;
       }
       if (stage === 'boot') return !!answers.boot;
       if (stage === 'result') return false;
@@ -949,8 +958,9 @@
     // Fire-and-forget submit to the backend (Klaviyo + Shopify + Odoo).
     // sessionStorage flag prevents double-posting if the user navigates back.
     useEffect(() => {
-      if (!answers.lead?.email || !top) return;
-      const sigKey = `__zf_${answers.lead.email}:${top.id}`;
+      const contactId = answers.lead?.email || answers.lead?.phone;
+      if (!contactId || !top) return;
+      const sigKey = `__zf_${contactId}:${top.id}`;
       try { if (sessionStorage.getItem(sigKey)) return; } catch (_) {}
       fetch('/api/fit-quiz/submit', {
         method: 'POST',
@@ -1103,8 +1113,8 @@
           </Section>
         </div>
 
-        {/* Confirmation that we'll send the result to the email captured upfront */}
-        {answers.lead && answers.lead.email && (
+        {/* Confirmation that we'll send the result to the contact captured upfront */}
+        {answers.lead && (answers.lead.email || answers.lead.phone) && (
           <div style={revealStyle(400)}>
             <div style={{
               background: linerColor, color: '#fff',
@@ -1123,7 +1133,14 @@
                 Thanks{answers.lead.name ? ', ' + answers.lead.name : ''}.
               </div>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', margin: 0, lineHeight: 1.5, maxWidth: 520 }}>
-                We’ll email the <strong style={{ color: '#fff' }}>{top.name}</strong> pairing to <strong style={{ color: '#fff' }}>{answers.lead.email}</strong> so you can refer back to it anytime.
+                {(() => {
+                  const sendByText = answers.lead.contactPref === 'text' && answers.lead.phone;
+                  const dest = sendByText ? answers.lead.phone : answers.lead.email;
+                  const verb = sendByText ? 'text' : 'email';
+                  return (
+                    <>We’ll {verb} the <strong style={{ color: '#fff' }}>{top.name}</strong> pairing to <strong style={{ color: '#fff' }}>{dest}</strong> so you can refer back to it anytime.</>
+                  );
+                })()}
               </p>
             </div>
           </div>
@@ -1230,21 +1247,52 @@
   function LeadCapture({ value, onChange }) {
     // Marketing consent (optIn / smsConsent) defaults OFF — explicit opt-in, not opt-out.
     // dataConsent is required and must be actively checked to proceed.
-    const lead = value || { name: '', email: '', phone: '', optIn: false, smsConsent: false, dataConsent: false };
+    // contactPref: which channel the user wants results on ('email' | 'text'). We
+    // save both contact values regardless; only the preferred one is required.
+    const lead = value || { name: '', email: '', phone: '', contactPref: 'email', optIn: false, smsConsent: false, dataConsent: false };
     const setField = (patch) => onChange({ ...lead, ...patch });
+    const pref = lead.contactPref === 'text' ? 'text' : 'email';
     const emailValid = !lead.email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email.trim());
-    // Phone is optional — only flag as invalid if something was typed and it has fewer than 10 digits.
-    const phoneValid = !lead.phone || (lead.phone.replace(/\D/g, '').length >= 10);
+    // Each field is "valid" when empty UNLESS it's the required (preferred) channel.
+    const emailReq = pref === 'email';
+    const phoneReq = pref === 'text';
+    const phoneDigits = (lead.phone || '').replace(/\D/g, '').length;
+    const phoneValid = !lead.phone || phoneDigits >= 10;
+    const emailFieldError = (!emailValid) || (emailReq && !lead.email);
+    const phoneFieldError = (!phoneValid) || (phoneReq && !lead.phone);
 
     return (
       <div>
         <div style={css.eyebrow}>Let’s get started</div>
         <h2 style={{ ...css.h2, marginTop: 10 }}>First, who are we fitting?</h2>
         <p style={css.hint}>
-          We’ll email your match so you can refer back to it anytime — and so a ZipFit bootfitter can follow up if you want help dialing in the fit.
+          We’ll send your match so you can refer back to it anytime — and so a ZipFit bootfitter can follow up if you want help dialing in the fit.
         </p>
 
         <div style={{ marginTop: 26, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 560 }}>
+          {/* Preferred contact channel. We save both email + phone; only the chosen one is required. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ ...css.eyebrow, fontSize: 11 }}>How should we send your results?</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[{ v: 'email', l: 'Email' }, { v: 'text', l: 'Text' }].map((opt) => {
+                const active = pref === opt.v;
+                return (
+                  <button key={opt.v} type="button"
+                    onClick={() => setField({ contactPref: opt.v })}
+                    style={{
+                      flex: 1, padding: '11px 14px', borderRadius: 8, cursor: 'pointer',
+                      fontWeight: 700, fontSize: 14, letterSpacing: '.02em',
+                      border: `1.5px solid ${active ? RED : 'rgba(39,39,39,.16)'}`,
+                      background: active ? RED : '#fff',
+                      color: active ? '#fff' : '#4A4A4A',
+                      transition: 'all .12s',
+                    }}>
+                    {opt.l}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ ...css.eyebrow, fontSize: 11 }}>First name <em style={{ fontStyle: 'normal', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0, color: 'rgba(39,39,39,.4)' }}>required</em></span>
             <input
@@ -1259,26 +1307,27 @@
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ ...css.eyebrow, fontSize: 11 }}>Email <em style={{ fontStyle: 'normal', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0, color: 'rgba(39,39,39,.4)' }}>required</em></span>
+            <span style={{ ...css.eyebrow, fontSize: 11 }}>Email <em style={{ fontStyle: 'normal', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0, color: 'rgba(39,39,39,.4)' }}>{emailReq ? 'required' : 'optional'}</em></span>
             <input
               type="email"
               value={lead.email}
               onChange={(e) => setField({ email: e.target.value })}
               placeholder="your@email.com"
-              required
-              style={inputStyle(!emailValid)}
+              required={emailReq}
+              style={inputStyle(emailFieldError)}
             />
             {!emailValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid email.</span>}
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ ...css.eyebrow, fontSize: 11 }}>Phone <em style={{ fontStyle: 'normal', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0, color: 'rgba(39,39,39,.4)' }}>optional</em></span>
+            <span style={{ ...css.eyebrow, fontSize: 11 }}>Phone <em style={{ fontStyle: 'normal', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0, color: 'rgba(39,39,39,.4)' }}>{phoneReq ? 'required' : 'optional'}</em></span>
             <input
               type="tel"
               value={lead.phone || ''}
               onChange={(e) => setField({ phone: e.target.value, ...(e.target.value ? {} : { smsConsent: false }) })}
               placeholder="(555) 123-4567"
-              style={inputStyle(!phoneValid)}
+              required={phoneReq}
+              style={inputStyle(phoneFieldError)}
             />
             {!phoneValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid phone number.</span>}
           </label>
