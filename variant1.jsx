@@ -705,7 +705,8 @@
       if (stage === 'lead') {
         const l = answers.lead;
         if (!l) return false;
-        return !!l.name && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((l.email || '').trim());
+        const phoneOk = !l.phone || l.phone.replace(/\D/g, '').length >= 10;
+        return !!l.name && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((l.email || '').trim()) && phoneOk;
       }
       if (stage === 'boot') return !!answers.boot;
       if (stage === 'result') return false;
@@ -1227,9 +1228,11 @@
   // production: pushed to Odoo when the user finishes the quiz so we can
   // associate the lead with their match. Values bubble up via onChange.
   function LeadCapture({ value, onChange }) {
-    const lead = value || { name: '', email: '', optIn: true };
+    const lead = value || { name: '', email: '', phone: '', optIn: true };
     const setField = (patch) => onChange({ ...lead, ...patch });
     const emailValid = !lead.email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email.trim());
+    // Phone is optional — only flag as invalid if something was typed and it has fewer than 10 digits.
+    const phoneValid = !lead.phone || (lead.phone.replace(/\D/g, '').length >= 10);
 
     return (
       <div>
@@ -1264,6 +1267,18 @@
               style={inputStyle(!emailValid)}
             />
             {!emailValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid email.</span>}
+          </label>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ ...css.eyebrow, fontSize: 11 }}>Phone <em style={{ fontStyle: 'normal', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0, color: 'rgba(39,39,39,.4)' }}>optional</em></span>
+            <input
+              type="tel"
+              value={lead.phone || ''}
+              onChange={(e) => setField({ phone: e.target.value })}
+              placeholder="(555) 123-4567"
+              style={inputStyle(!phoneValid)}
+            />
+            {!phoneValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid phone number.</span>}
           </label>
 
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#4A4A4A', cursor: 'pointer', marginTop: 4, lineHeight: 1.4 }}>

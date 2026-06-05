@@ -126,6 +126,25 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
 //
 // Requires KLAVIYO_API_KEY (Private API key from Klaviyo → Account → API Keys).
 // ─────────────────────────────────────────────────────────────────────────
+// Normalizes a raw phone number to E.164 (e.g. "+15551234567"), which is what
+// Klaviyo and Shopify expect. Assumes US/Canada (+1) when no country code is
+// present. Returns null if the input can't be confidently normalized, so an
+// invalid number never breaks the whole profile push.
+function normalizePhone(raw) {
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  // Already in +<country><number> form — keep digits after the plus.
+  if (trimmed.startsWith('+')) {
+    const digits = trimmed.slice(1).replace(/\D/g, '');
+    return digits.length >= 10 && digits.length <= 15 ? `+${digits}` : null;
+  }
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;          // US/CA local
+  if (digits.length === 11 && digits[0] === '1') return `+${digits}`; // US/CA with country code
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Builds a shareable URL that loads the quiz directly on the result screen.
 // Encoded as base64url JSON so it survives email link tracking without issues.
 function buildResultUrl({ lead, boot, answers }) {
@@ -160,10 +179,14 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
   ).filter(Boolean);
 
   const resultUrl = buildResultUrl({ lead, boot, answers });
+  const phoneE164 = normalizePhone(lead.phone);
 
   const profileProps = {
     first_name: lead.name,
     email: lead.email,
+    // Klaviyo requires E.164 format; only attach when we could normalize it,
+    // otherwise an invalid number would 400 the entire profile request.
+    ...(phoneE164 ? { phone_number: phoneE164 } : {}),
     properties: {
       fit_quiz_liner:        match?.name  || null,
       fit_quiz_liner_id:     match?.id    || null,
@@ -279,6 +302,7 @@ async function pushToShopify({ lead, boot, match }) {
     'Content-Type': 'application/json',
   };
   const base = `https://${domain}/admin/api/2024-10`;
+  const phoneE164 = normalizePhone(lead.phone);
 
   const newTags = [
     'fit-quiz',
@@ -315,7 +339,7 @@ async function pushToShopify({ lead, boot, match }) {
     const putRes = await fetch(`${base}/customers/${existing.id}.json`, {
       method: 'PUT',
       headers: authHeaders,
-      body: JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note, accepts_marketing: !!lead.optIn, metafields } }),
+      body: JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note, accepts_marketing: !!lead.optIn, metafields, ...(phoneE164 ? { phone: phoneE164 } : {}) } }),
     });
     if (!putRes.ok) {
       const t = await putRes.text();
@@ -332,6 +356,7 @@ async function pushToShopify({ lead, boot, match }) {
       customer: {
         first_name: lead.name,
         email: lead.email,
+        ...(phoneE164 ? { phone: phoneE164 } : {}),
         tags: newTags.join(', '),
         accepts_marketing: !!lead.optIn,
         note,
@@ -371,10 +396,13 @@ async function pushToOdoo({ lead, boot, answers, match }) {
   const uid = await xmlrpc(`${url}/xmlrpc/2/common`, 'authenticate', [db, user, key, {}]);
   if (!uid) throw new Error('odoo_auth_failed');
 
+  const leadPhone = normalizePhone(lead.phone) || lead.phone || false;
+
   const leadVals = {
     name:         `Fit Quiz · ${lead.name} · ${match?.name || 'no match'}`,
     contact_name: lead.name,
     email_from:   lead.email,
+    ...(leadPhone ? { phone: leadPhone } : {}),
     type:         'lead',
     source_id:    false,
     description: [
@@ -396,6 +424,7 @@ async function pushToOdoo({ lead, boot, answers, match }) {
       `Fit problems:  ${fitProblems}`,
       '',
       '── Lead Info ──────────────────────────',
+      `Phone:            ${leadPhone || '—'}`,
       `Marketing opt-in: ${lead.optIn ? 'yes' : 'no'}`,
       resultUrl ? `Result link:      ${resultUrl}` : '',
     ].filter((l) => l !== undefined).join('\n'),
