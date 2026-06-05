@@ -706,7 +706,7 @@
         const l = answers.lead;
         if (!l) return false;
         const phoneOk = !l.phone || l.phone.replace(/\D/g, '').length >= 10;
-        return !!l.name && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((l.email || '').trim()) && phoneOk;
+        return !!l.name && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((l.email || '').trim()) && phoneOk && !!l.dataConsent;
       }
       if (stage === 'boot') return !!answers.boot;
       if (stage === 'result') return false;
@@ -1228,7 +1228,9 @@
   // production: pushed to Odoo when the user finishes the quiz so we can
   // associate the lead with their match. Values bubble up via onChange.
   function LeadCapture({ value, onChange }) {
-    const lead = value || { name: '', email: '', phone: '', optIn: true };
+    // Marketing consent (optIn / smsConsent) defaults OFF — explicit opt-in, not opt-out.
+    // dataConsent is required and must be actively checked to proceed.
+    const lead = value || { name: '', email: '', phone: '', optIn: false, smsConsent: false, dataConsent: false };
     const setField = (patch) => onChange({ ...lead, ...patch });
     const emailValid = !lead.email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email.trim());
     // Phone is optional — only flag as invalid if something was typed and it has fewer than 10 digits.
@@ -1274,21 +1276,52 @@
             <input
               type="tel"
               value={lead.phone || ''}
-              onChange={(e) => setField({ phone: e.target.value })}
+              onChange={(e) => setField({ phone: e.target.value, ...(e.target.value ? {} : { smsConsent: false }) })}
               placeholder="(555) 123-4567"
               style={inputStyle(!phoneValid)}
             />
             {!phoneValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid phone number.</span>}
           </label>
 
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#4A4A4A', cursor: 'pointer', marginTop: 4, lineHeight: 1.4 }}>
-            <input type="checkbox" checked={!!lead.optIn} onChange={(e) => setField({ optIn: e.target.checked })}
+          {/* Required: consent to store the quiz data and email the result. */}
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#4A4A4A', cursor: 'pointer', marginTop: 4, lineHeight: 1.45 }}>
+            <input type="checkbox" checked={!!lead.dataConsent} onChange={(e) => setField({ dataConsent: e.target.checked })}
               style={{ accentColor: RED, width: 16, height: 16, marginTop: 1, flexShrink: 0, cursor: 'pointer' }} />
-            <span>Send me fit tips and the occasional update. Unsubscribe anytime.</span>
+            <span>
+              I agree to let ZipFit store my boot, foot-measurement, and contact details to generate my fit
+              recommendation and email it to me, as described in the{' '}
+              <a href="https://zipfit.com/policies/privacy-policy" target="_blank" rel="noopener noreferrer"
+                style={{ color: RED, textDecoration: 'underline' }}>privacy policy</a>.
+              <em style={{ fontStyle: 'normal', color: '#C73327', marginLeft: 4 }}>required</em>
+            </span>
           </label>
 
-          <p style={{ fontSize: 11, color: '#a8a39d', margin: '4px 0 0', lineHeight: 1.4 }}>
-            By continuing, you agree to our privacy policy. We’ll only use your email to send your fit results and (if you opt in) the occasional update.
+          {/* Optional: email marketing opt-in. */}
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#4A4A4A', cursor: 'pointer', lineHeight: 1.45 }}>
+            <input type="checkbox" checked={!!lead.optIn} onChange={(e) => setField({ optIn: e.target.checked })}
+              style={{ accentColor: RED, width: 16, height: 16, marginTop: 1, flexShrink: 0, cursor: 'pointer' }} />
+            <span>Email me fit tips, product news, and the occasional update. Unsubscribe anytime.</span>
+          </label>
+
+          {/* Optional: SMS marketing consent — only meaningful when a phone is given. TCPA-style language. */}
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: lead.phone ? '#4A4A4A' : '#a8a39d', cursor: lead.phone ? 'pointer' : 'not-allowed', lineHeight: 1.45 }}>
+            <input type="checkbox" checked={!!lead.smsConsent} disabled={!lead.phone}
+              onChange={(e) => setField({ smsConsent: e.target.checked })}
+              style={{ accentColor: RED, width: 16, height: 16, marginTop: 1, flexShrink: 0, cursor: lead.phone ? 'pointer' : 'not-allowed' }} />
+            <span>
+              Text me fit tips and updates at the number above. I consent to receive recurring automated
+              marketing text messages from ZipFit. Consent is not a condition of purchase. Msg &amp; data rates
+              may apply. Reply STOP to opt out, HELP for help.
+            </span>
+          </label>
+
+          <p style={{ fontSize: 11, color: '#a8a39d', margin: '4px 0 0', lineHeight: 1.45 }}>
+            See our{' '}
+            <a href="https://zipfit.com/policies/privacy-policy" target="_blank" rel="noopener noreferrer"
+              style={{ color: '#a8a39d', textDecoration: 'underline' }}>privacy policy</a>{' '}and{' '}
+            <a href="https://zipfit.com/policies/terms-of-service" target="_blank" rel="noopener noreferrer"
+              style={{ color: '#a8a39d', textDecoration: 'underline' }}>terms</a>. You can withdraw consent or
+            request deletion of your data anytime by contacting us.
           </p>
         </div>
       </div>

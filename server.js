@@ -98,6 +98,10 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
   if (!lead.name) {
     return res.status(400).json({ ok: false, error: 'missing_name' });
   }
+  // Storing the quiz/foot/contact data requires explicit consent.
+  if (!lead.dataConsent) {
+    return res.status(400).json({ ok: false, error: 'missing_data_consent' });
+  }
 
   console.log('[fit-quiz/submit]', {
     name: lead.name, email: lead.email,
@@ -122,7 +126,10 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
 //
 // 1. Upsert the profile with all quiz answers as custom properties.
 // 2. Track a "Fit Quiz Completed" event so flows can be triggered on it.
-// 3. If KLAVIYO_LIST_ID is set AND the user opted in, subscribe them to the list.
+// 3. If KLAVIYO_LIST_ID is set, record explicit marketing consent via the
+//    subscription endpoint — email consent when the user opted in, SMS consent
+//    when they checked the SMS box and gave a valid phone. Data-storage consent
+//    is required up front (enforced in the submit handler).
 //
 // Requires KLAVIYO_API_KEY (Private API key from Klaviyo → Account → API Keys).
 // ─────────────────────────────────────────────────────────────────────────
@@ -203,6 +210,11 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
       fit_quiz_fit_problems: fitProblems.join(', ') || null,
       fit_quiz_completed_at: new Date().toISOString(),
       fit_quiz_result_url:   resultUrl,
+      // Consent audit trail
+      fit_quiz_data_consent:  !!lead.dataConsent,
+      fit_quiz_email_consent: !!lead.optIn,
+      fit_quiz_sms_consent:   !!(lead.smsConsent && phoneE164),
+      fit_quiz_consent_at:    new Date().toISOString(),
     },
   };
 
@@ -271,19 +283,38 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
     }),
   });
 
-  // Step 3 — subscribe to list (only if opted in and a list is configured)
+  // Step 3 — record marketing consent + subscribe to list.
+  // Uses the subscription endpoint (not a bare list-add) so Klaviyo logs proper
+  // opt-in consent for email and/or SMS based on what the user actually agreed to.
   const listId = process.env.KLAVIYO_LIST_ID;
-  if (listId && lead.optIn && profileId) {
-    await fetch(`https://a.klaviyo.com/api/lists/${listId}/relationships/profiles/`, {
+  const wantEmail = !!lead.optIn;
+  const wantSms   = !!lead.smsConsent && !!phoneE164;
+  if (listId && (wantEmail || wantSms)) {
+    const subAttrs = { email: lead.email };
+    const subscriptions = {};
+    if (wantEmail) subscriptions.email = { marketing: { consent: 'SUBSCRIBED' } };
+    if (wantSms) {
+      subAttrs.phone_number = phoneE164;
+      subscriptions.sms = { marketing: { consent: 'SUBSCRIBED' } };
+    }
+    subAttrs.subscriptions = subscriptions;
+
+    await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/', {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        data: [{ type: 'profile', id: profileId }],
+        data: {
+          type: 'profile-subscription-bulk-create-job',
+          attributes: {
+            profiles: { data: [{ type: 'profile', attributes: subAttrs }] },
+          },
+          relationships: { list: { data: { type: 'list', id: listId } } },
+        },
       }),
     });
   }
 
-  return { ok: true, profileId };
+  return { ok: true, profileId, emailConsent: wantEmail, smsConsent: wantSms };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -303,6 +334,11 @@ async function pushToShopify({ lead, boot, match }) {
   };
   const base = `https://${domain}/admin/api/2024-10`;
   const phoneE164 = normalizePhone(lead.phone);
+  // SMS marketing consent block — only when the user explicitly consented AND
+  // we have a usable E.164 number. Shopify records this as an opt-in with source.
+  const smsConsentBlock = (lead.smsConsent && phoneE164)
+    ? { sms_marketing_consent: { state: 'subscribed', opt_in_level: 'single_opt_in', consent_updated_at: new Date().toISOString() } }
+    : {};
 
   const newTags = [
     'fit-quiz',
@@ -339,7 +375,7 @@ async function pushToShopify({ lead, boot, match }) {
     const putRes = await fetch(`${base}/customers/${existing.id}.json`, {
       method: 'PUT',
       headers: authHeaders,
-      body: JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note, accepts_marketing: !!lead.optIn, metafields, ...(phoneE164 ? { phone: phoneE164 } : {}) } }),
+      body: JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note, accepts_marketing: !!lead.optIn, metafields, ...(phoneE164 ? { phone: phoneE164 } : {}), ...smsConsentBlock } }),
     });
     if (!putRes.ok) {
       const t = await putRes.text();
@@ -361,6 +397,7 @@ async function pushToShopify({ lead, boot, match }) {
         accepts_marketing: !!lead.optIn,
         note,
         metafields,
+        ...smsConsentBlock,
       },
     }),
   });
@@ -425,7 +462,10 @@ async function pushToOdoo({ lead, boot, answers, match }) {
       '',
       '── Lead Info ──────────────────────────',
       `Phone:            ${leadPhone || '—'}`,
-      `Marketing opt-in: ${lead.optIn ? 'yes' : 'no'}`,
+      `Data storage consent: ${lead.dataConsent ? 'yes' : 'no'}`,
+      `Email opt-in:     ${lead.optIn ? 'yes' : 'no'}`,
+      `SMS opt-in:       ${lead.smsConsent ? 'yes' : 'no'}`,
+      `Consent recorded: ${new Date().toISOString()}`,
       resultUrl ? `Result link:      ${resultUrl}` : '',
     ].filter((l) => l !== undefined).join('\n'),
   };
