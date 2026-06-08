@@ -12,6 +12,67 @@
   const WARM = '#F1EDE7';
   const RAINBOW = 'linear-gradient(90deg,#EF4623 0%,#FBCF21 20%,#68BD46 40%,#5DC7D1 60%,#2F438F 80%,#952A7D 100%)';
 
+  // ─── Phone country codes ────────────────────────────────────────────────
+  // Compact list covering ZipFit's core ski markets. Each entry carries the
+  // E.164 calling code plus the min/max national-number digit lengths used for
+  // light client-side validation. The dropdown is auto-defaulted from the
+  // visitor's browser locale (see detectCountry) and is user-overridable.
+  const COUNTRY_CODES = [
+    { iso: 'US', name: 'United States',  dial: '+1',   flag: '🇺🇸', min: 10, max: 10, ex: '(555) 123-4567' },
+    { iso: 'CA', name: 'Canada',         dial: '+1',   flag: '🇨🇦', min: 10, max: 10, ex: '(555) 123-4567' },
+    { iso: 'GB', name: 'United Kingdom', dial: '+44',  flag: '🇬🇧', min: 9,  max: 10, ex: '07911 123456' },
+    { iso: 'IE', name: 'Ireland',        dial: '+353', flag: '🇮🇪', min: 7,  max: 9,  ex: '085 012 3456' },
+    { iso: 'AU', name: 'Australia',      dial: '+61',  flag: '🇦🇺', min: 9,  max: 9,  ex: '0412 345 678' },
+    { iso: 'NZ', name: 'New Zealand',    dial: '+64',  flag: '🇳🇿', min: 8,  max: 10, ex: '021 123 4567' },
+    { iso: 'FR', name: 'France',         dial: '+33',  flag: '🇫🇷', min: 9,  max: 9,  ex: '06 12 34 56 78' },
+    { iso: 'DE', name: 'Germany',        dial: '+49',  flag: '🇩🇪', min: 10, max: 11, ex: '0151 23456789' },
+    { iso: 'CH', name: 'Switzerland',    dial: '+41',  flag: '🇨🇭', min: 9,  max: 9,  ex: '079 123 45 67' },
+    { iso: 'AT', name: 'Austria',        dial: '+43',  flag: '🇦🇹', min: 9,  max: 11, ex: '0664 123456' },
+    { iso: 'IT', name: 'Italy',          dial: '+39',  flag: '🇮🇹', min: 9,  max: 11, ex: '312 345 6789' },
+    { iso: 'ES', name: 'Spain',          dial: '+34',  flag: '🇪🇸', min: 9,  max: 9,  ex: '612 34 56 78' },
+    { iso: 'SE', name: 'Sweden',         dial: '+46',  flag: '🇸🇪', min: 7,  max: 10, ex: '070 123 45 67' },
+    { iso: 'NO', name: 'Norway',         dial: '+47',  flag: '🇳🇴', min: 8,  max: 8,  ex: '406 12 345' },
+    { iso: 'FI', name: 'Finland',        dial: '+358', flag: '🇫🇮', min: 6,  max: 10, ex: '041 2345678' },
+    { iso: 'JP', name: 'Japan',          dial: '+81',  flag: '🇯🇵', min: 10, max: 10, ex: '090-1234-5678' },
+    { iso: 'KR', name: 'South Korea',    dial: '+82',  flag: '🇰🇷', min: 9,  max: 10, ex: '010-1234-5678' },
+  ];
+  const COUNTRY_BY_ISO = COUNTRY_CODES.reduce((m, c) => { m[c.iso] = c; return m; }, {});
+
+  // Minimal IANA-timezone → ISO fallback for locales that lack a region subtag
+  // (e.g. a bare "en"). Covers the zones our markets cluster in.
+  const TZ_COUNTRY = {
+    'Europe/London': 'GB', 'Europe/Dublin': 'IE', 'Europe/Paris': 'FR', 'Europe/Berlin': 'DE',
+    'Europe/Zurich': 'CH', 'Europe/Vienna': 'AT', 'Europe/Rome': 'IT', 'Europe/Madrid': 'ES',
+    'Europe/Stockholm': 'SE', 'Europe/Oslo': 'NO', 'Europe/Helsinki': 'FI',
+    'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Pacific/Auckland': 'NZ',
+    'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Perth': 'AU', 'Australia/Brisbane': 'AU',
+    'America/Toronto': 'CA', 'America/Vancouver': 'CA', 'America/Edmonton': 'CA',
+    'America/Winnipeg': 'CA', 'America/Halifax': 'CA',
+  };
+
+  // Best-guess country for the visitor: prefer the region subtag of their
+  // browser locale(s), fall back to timezone, then default to US.
+  function detectCountry() {
+    try {
+      const langs = (navigator.languages && navigator.languages.length)
+        ? navigator.languages : [navigator.language || ''];
+      for (const l of langs) {
+        const m = /[-_]([A-Za-z]{2})(?:[-_]|$)/.exec(l || '');
+        if (m && COUNTRY_BY_ISO[m[1].toUpperCase()]) return m[1].toUpperCase();
+      }
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz && TZ_COUNTRY[tz]) return TZ_COUNTRY[tz];
+    } catch (_) { /* SSR / locked-down browsers — fall through to default */ }
+    return 'US';
+  }
+
+  // National-number length check against the lead's selected country (default US).
+  function phoneDigitsOk(l) {
+    const c = COUNTRY_BY_ISO[(l && l.country) || 'US'] || COUNTRY_BY_ISO.US;
+    const n = ((l && l.phone) || '').replace(/\D/g, '').length;
+    return n >= c.min && n <= c.max;
+  }
+
   // ─── styles ─────────────────────────────────────────────────────────
   const rainbowText = {
     background: RAINBOW,
@@ -709,7 +770,7 @@
         const emailFilled = !!(l.email || '').trim();
         const emailOk = emailFilled && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(l.email.trim());
         const phoneFilled = !!l.phone;
-        const phoneOk = phoneFilled && l.phone.replace(/\D/g, '').length >= 10;
+        const phoneOk = phoneFilled && phoneDigitsOk(l);
         // Preferred channel must be valid; the other is optional but, if typed, must be valid.
         const prefOk = pref === 'text' ? phoneOk : emailOk;
         const otherOk = pref === 'text'
@@ -1135,7 +1196,9 @@
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', margin: 0, lineHeight: 1.5, maxWidth: 520 }}>
                 {(() => {
                   const sendByText = answers.lead.contactPref === 'text' && answers.lead.phone;
-                  const dest = sendByText ? answers.lead.phone : answers.lead.email;
+                  const dest = sendByText
+                    ? `${answers.lead.dialCode || ''} ${answers.lead.phone}`.trim()
+                    : answers.lead.email;
                   const verb = sendByText ? 'text' : 'email';
                   return (
                     <>We’ll {verb} the <strong style={{ color: '#fff' }}>{top.name}</strong> pairing to <strong style={{ color: '#fff' }}>{dest}</strong> so you can refer back to it anytime.</>
@@ -1251,13 +1314,23 @@
     // save both contact values regardless; only the preferred one is required.
     const lead = value || { name: '', email: '', phone: '', contactPref: 'email', optIn: false, smsConsent: false, dataConsent: false };
     const setField = (patch) => onChange({ ...lead, ...patch });
+    // Auto-pick the phone country from the visitor's locale on first render so
+    // the dial code is already prefixed based on where they're shopping. The
+    // user can still override it via the dropdown.
+    useEffect(() => {
+      if (!lead.country) {
+        const iso = detectCountry();
+        onChange({ ...lead, country: iso, dialCode: COUNTRY_BY_ISO[iso].dial });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    const cc = COUNTRY_BY_ISO[lead.country] || COUNTRY_BY_ISO[detectCountry()] || COUNTRY_BY_ISO.US;
     const pref = lead.contactPref === 'text' ? 'text' : 'email';
     const emailValid = !lead.email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email.trim());
     // Each field is "valid" when empty UNLESS it's the required (preferred) channel.
     const emailReq = pref === 'email';
     const phoneReq = pref === 'text';
-    const phoneDigits = (lead.phone || '').replace(/\D/g, '').length;
-    const phoneValid = !lead.phone || phoneDigits >= 10;
+    const phoneValid = !lead.phone || phoneDigitsOk(lead);
     const emailFieldError = (!emailValid) || (emailReq && !lead.email);
     const phoneFieldError = (!phoneValid) || (phoneReq && !lead.phone);
 
@@ -1321,14 +1394,29 @@
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ ...css.eyebrow, fontSize: 11 }}>Phone <em style={{ fontStyle: 'normal', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0, color: 'rgba(39,39,39,.4)' }}>{phoneReq ? 'required' : 'optional'}</em></span>
-            <input
-              type="tel"
-              value={lead.phone || ''}
-              onChange={(e) => setField({ phone: e.target.value, ...(e.target.value ? {} : { smsConsent: false }) })}
-              placeholder="(555) 123-4567"
-              required={phoneReq}
-              style={inputStyle(phoneFieldError)}
-            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              {/* Country code — auto-defaulted from the shopper's locale, overridable. */}
+              <select
+                aria-label="Phone country code"
+                value={cc.iso}
+                onChange={(e) => {
+                  const c = COUNTRY_BY_ISO[e.target.value] || COUNTRY_BY_ISO.US;
+                  setField({ country: c.iso, dialCode: c.dial });
+                }}
+                style={{ ...inputStyle(false), width: 'auto', flexShrink: 0, paddingRight: 8, cursor: 'pointer' }}>
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.iso} value={c.iso}>{c.flag} {c.iso} {c.dial}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                value={lead.phone || ''}
+                onChange={(e) => setField({ phone: e.target.value, ...(e.target.value ? {} : { smsConsent: false }) })}
+                placeholder={cc.ex}
+                required={phoneReq}
+                style={inputStyle(phoneFieldError)}
+              />
+            </div>
             {!phoneValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid phone number.</span>}
           </label>
 
@@ -1356,7 +1444,7 @@
               requires an active tap/click so intent is unambiguous. Disabled until
               a valid phone number is present. */}
           {(() => {
-            const phoneReady = (lead.phone || '').replace(/\D/g,'').length >= 10;
+            const phoneReady = phoneDigitsOk(lead);
             const active = !!lead.smsConsent;
             return (
               <div style={{

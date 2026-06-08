@@ -99,7 +99,7 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
   // when given. Require at least the preferred channel, and validate any value
   // that is present.
   const hasEmail = !!lead.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email);
-  const hasPhone = !!normalizePhone(lead.phone);
+  const hasPhone = !!normalizePhone(lead.phone, lead.dialCode);
   if (lead.email && !hasEmail) {
     return res.status(400).json({ ok: false, error: 'invalid_email' });
   }
@@ -149,21 +149,32 @@ app.post('/api/fit-quiz/submit', async (req, res) => {
 // Requires KLAVIYO_API_KEY (Private API key from Klaviyo → Account → API Keys).
 // ─────────────────────────────────────────────────────────────────────────
 // Normalizes a raw phone number to E.164 (e.g. "+15551234567"), which is what
-// Klaviyo and Shopify expect. Assumes US/Canada (+1) when no country code is
-// present. Returns null if the input can't be confidently normalized, so an
-// invalid number never breaks the whole profile push.
-function normalizePhone(raw) {
+// Klaviyo and Shopify expect. The shopper's country is auto-detected from their
+// browser locale in the quiz and sent as `dialCode` (e.g. "+44"); we prepend
+// that calling code to the national number they typed. Falls back to US/Canada
+// (+1) when no dial code is supplied (e.g. older payloads or reshared links).
+// Returns null if the input can't be confidently normalized, so an invalid
+// number never breaks the whole profile push.
+function normalizePhone(raw, dialCode) {
   if (!raw) return null;
   const trimmed = String(raw).trim();
-  // Already in +<country><number> form — keep digits after the plus.
+  // Already in +<country><number> form — trust it as the shopper typed it.
   if (trimmed.startsWith('+')) {
     const digits = trimmed.slice(1).replace(/\D/g, '');
-    return digits.length >= 10 && digits.length <= 15 ? `+${digits}` : null;
+    return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
   }
-  const digits = trimmed.replace(/\D/g, '');
-  if (digits.length === 10) return `+1${digits}`;          // US/CA local
-  if (digits.length === 11 && digits[0] === '1') return `+${digits}`; // US/CA with country code
-  return null;
+  let national = trimmed.replace(/\D/g, '');
+  // Country calling code from the selected dial code (e.g. "+44" → "44").
+  const cc = String(dialCode || '+1').replace(/\D/g, '') || '1';
+  if (cc === '1') {
+    // North American Numbering Plan: 10 digits, optionally with a leading 1.
+    if (national.length === 11 && national[0] === '1') national = national.slice(1);
+    return national.length === 10 ? `+1${national}` : null;
+  }
+  // Most other countries write a trunk "0" prefix that is dropped in E.164.
+  if (national.startsWith('0')) national = national.slice(1);
+  const full = `${cc}${national}`;
+  return full.length >= 8 && full.length <= 15 ? `+${full}` : null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -201,7 +212,7 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
   ).filter(Boolean);
 
   const resultUrl = buildResultUrl({ lead, boot, answers });
-  const phoneE164 = normalizePhone(lead.phone);
+  const phoneE164 = normalizePhone(lead.phone, lead.dialCode);
   const hasEmail = !!lead.email;
   const contactPref = lead.contactPref === 'text' ? 'text' : 'email';
 
@@ -359,7 +370,7 @@ async function pushToShopify({ lead, boot, match }) {
     'Content-Type': 'application/json',
   };
   const base = `https://${domain}/admin/api/2024-10`;
-  const phoneE164 = normalizePhone(lead.phone);
+  const phoneE164 = normalizePhone(lead.phone, lead.dialCode);
   // SMS marketing consent block — only when the user explicitly consented AND
   // we have a usable E.164 number. Shopify records this as an opt-in with source.
   const smsConsentBlock = (lead.smsConsent && phoneE164)
@@ -462,7 +473,7 @@ async function pushToOdoo({ lead, boot, answers, match }) {
   const uid = await xmlrpc(`${url}/xmlrpc/2/common`, 'authenticate', [db, user, key, {}]);
   if (!uid) throw new Error('odoo_auth_failed');
 
-  const leadPhone = normalizePhone(lead.phone) || lead.phone || false;
+  const leadPhone = normalizePhone(lead.phone, lead.dialCode) || lead.phone || false;
 
   const leadVals = {
     name:         `Fit Quiz · ${lead.name} · ${match?.name || 'no match'}`,
