@@ -1352,17 +1352,52 @@
             <span>Email me fit tips, product news, and the occasional update. Unsubscribe anytime.</span>
           </label>
 
-          {/* Optional: SMS marketing consent — only meaningful when a phone is given. TCPA-style language. */}
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: lead.phone ? '#4A4A4A' : '#a8a39d', cursor: lead.phone ? 'pointer' : 'not-allowed', lineHeight: 1.45 }}>
-            <input type="checkbox" checked={!!lead.smsConsent} disabled={!lead.phone}
-              onChange={(e) => setField({ smsConsent: e.target.checked })}
-              style={{ accentColor: RED, width: 16, height: 16, marginTop: 1, flexShrink: 0, cursor: lead.phone ? 'pointer' : 'not-allowed' }} />
-            <span>
-              Text me fit tips and updates at the number above. I consent to receive recurring automated
-              marketing text messages from ZipFit. Consent is not a condition of purchase. Msg &amp; data rates
-              may apply. Reply STOP to opt out, HELP for help.
-            </span>
-          </label>
+          {/* Explicit SMS consent — TCPA compliant. Shown as a distinct card that
+              requires an active tap/click so intent is unambiguous. Disabled until
+              a valid phone number is present. */}
+          {(() => {
+            const phoneReady = (lead.phone || '').replace(/\D/g,'').length >= 10;
+            const active = !!lead.smsConsent;
+            return (
+              <div style={{
+                borderRadius: 10,
+                border: `2px solid ${active ? RED : phoneReady ? 'rgba(196,57,45,.3)' : 'rgba(39,39,39,.1)'}`,
+                background: active ? 'rgba(196,57,45,.06)' : phoneReady ? '#fafafa' : 'rgba(39,39,39,.02)',
+                padding: '14px 16px',
+                transition: 'border-color .15s, background .15s',
+                opacity: phoneReady ? 1 : 0.5,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#2A2A2A' }}>
+                    📱 Text me fit tips &amp; updates
+                  </span>
+                  {/* Pill toggle button */}
+                  <button type="button" disabled={!phoneReady}
+                    onClick={() => phoneReady && setField({ smsConsent: !active })}
+                    style={{
+                      flexShrink: 0,
+                      padding: '7px 18px',
+                      borderRadius: 99,
+                      border: `1.5px solid ${active ? RED : 'rgba(39,39,39,.25)'}`,
+                      background: active ? RED : '#fff',
+                      color: active ? '#fff' : '#4A4A4A',
+                      fontWeight: 700, fontSize: 13, cursor: phoneReady ? 'pointer' : 'not-allowed',
+                      transition: 'all .15s',
+                      whiteSpace: 'nowrap',
+                    }}>
+                    {active ? '✓ Opted in' : 'Opt in'}
+                  </button>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: '#7A7670', lineHeight: 1.55 }}>
+                  By opting in I consent to receive recurring automated marketing text messages from
+                  ZipFit at the number I provided. Consent is not a condition of purchase. Message
+                  frequency varies. Msg &amp; data rates may apply.
+                  Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.
+                  {!phoneReady && <em style={{ display: 'block', marginTop: 6, color: '#a8a39d' }}>Add a valid phone number above to enable SMS updates.</em>}
+                </p>
+              </div>
+            );
+          })()}
 
           <p style={{ fontSize: 11, color: '#a8a39d', margin: '4px 0 0', lineHeight: 1.45 }}>
             See our{' '}
