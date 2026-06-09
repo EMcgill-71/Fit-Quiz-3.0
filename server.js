@@ -336,19 +336,24 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
     }
     subAttrs.subscriptions = subscriptions;
 
-    await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/', {
+    const subBody = {
+      data: {
+        type: 'profile-subscription-bulk-create-job',
+        attributes: {
+          profiles: { data: [{ type: 'profile', attributes: subAttrs }] },
+        },
+        relationships: { list: { data: { type: 'list', id: listId } } },
+      },
+    };
+    console.log('[klaviyo/subscribe] request phone=%s email=%s wantSms=%s wantEmail=%s listId=%s',
+      phoneE164 || '(none)', lead.email || '(none)', wantSms, wantEmail, listId);
+    const subRes = await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/', {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        data: {
-          type: 'profile-subscription-bulk-create-job',
-          attributes: {
-            profiles: { data: [{ type: 'profile', attributes: subAttrs }] },
-          },
-          relationships: { list: { data: { type: 'list', id: listId } } },
-        },
-      }),
+      body: JSON.stringify(subBody),
     });
+    const subText = await subRes.text();
+    console.log('[klaviyo/subscribe] status=%d body=%s', subRes.status, subText);
   }
 
   return { ok: true, profileId, emailConsent: wantEmail, smsConsent: wantSms };
