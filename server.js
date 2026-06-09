@@ -184,14 +184,16 @@ function buildResultUrl({ lead, boot, answers }) {
   const base = (process.env.QUIZ_URL || '').replace(/\/$/, '');
   if (!base) return null;
   const token = Buffer.from(JSON.stringify({
-    lead:        { name: lead.name },
-    boot:        boot                  || null,
-    ff:          answers?.ff           || null,
-    ins:         answers?.ins          || null,
-    ank:         answers?.ank          || null,
-    cal:         answers?.cal          || null,
-    fit_problem: answers?.fit_problem  || null,
-    ability:     answers?.ability      || null,
+    lead:            { name: lead.name },
+    boot:            boot                       || null,
+    ff:              answers?.ff                || null,
+    ins:             answers?.ins               || null,
+    ank:             answers?.ank               || null,
+    cal:             answers?.cal               || null,
+    fit_problem:     answers?.fit_problem       || null,
+    terrain:         answers?.terrain           || null,
+    touring_primary: answers?.touring_primary   || null,
+    ability:         answers?.ability           || null,
   })).toString('base64url');
   return `${base}/?r=${token}`;
 }

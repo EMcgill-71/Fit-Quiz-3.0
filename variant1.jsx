@@ -733,15 +733,20 @@
   // ─── main quiz ──────────────────────────────────────────────────────
   const STAGES = ['intro', 'lead', 'boot', 'ff', 'ins', 'ank', 'cal', 'fit_problem', 'terrain', 'touring_primary', 'ability', 'result'];
 
-  // Decode a ?r= result token so follow-up email links land directly on the
+  // Decode a ?r= result token so follow-up email/SMS links land directly on the
   // result screen. Returns a partial answers object or null if absent/invalid.
   function decodeResultParam() {
     try {
       const p = new URLSearchParams(window.location.search).get('r');
       if (!p) return null;
-      // base64url → base64 → JSON
-      return JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
-    } catch (_) { return null; }
+      // base64url → standard base64 (restore padding stripped by Node's encoder)
+      const b64 = p.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+      return JSON.parse(atob(padded));
+    } catch (err) {
+      console.error('[quiz] failed to decode ?r= token:', err);
+      return null;
+    }
   }
 
   function QuizEditorial() {
@@ -1033,6 +1038,7 @@
           answers: {
             ff: answers.ff, ins: answers.ins, ank: answers.ank, cal: answers.cal,
             fit_problem: answers.fit_problem, ability: answers.ability,
+            terrain: answers.terrain, touring_primary: answers.touring_primary,
           },
           submittedAt: new Date().toISOString(),
         }),
