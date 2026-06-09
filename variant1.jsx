@@ -1473,7 +1473,7 @@
                       transition: 'all .15s',
                       whiteSpace: 'nowrap',
                     }}>
-                    {active ? '✓ Opted in' : 'Opt in'}
+                    {active ? '✓ Subscribed' : 'Subscribe'}
                   </button>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: '#7A7670', lineHeight: 1.55 }}>
