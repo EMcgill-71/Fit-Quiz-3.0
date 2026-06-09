@@ -320,7 +320,7 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
   // Step 3 — record marketing consent + subscribe to list.
   // Uses the subscription endpoint (not a bare list-add) so Klaviyo logs proper
   // opt-in consent for email and/or SMS based on what the user actually agreed to.
-  const listId = process.env.KLAVIYO_LIST_ID;
+  const listId = process.env.ZipFit_Primary;
   const wantEmail = !!lead.optIn && hasEmail;
   const wantSms   = !!lead.smsConsent && !!phoneE164;
   if (listId && (wantEmail || wantSms)) {
