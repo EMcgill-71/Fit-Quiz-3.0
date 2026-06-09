@@ -321,8 +321,18 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
   // Uses the subscription endpoint (not a bare list-add) so Klaviyo logs proper
   // opt-in consent for email and/or SMS based on what the user actually agreed to.
   const listId = process.env.ZipFit_Primary;
-  const wantEmail = !!lead.optIn && hasEmail;
-  const wantSms   = !!lead.smsConsent && !!phoneE164;
+  // Explicit comparison rather than !! so the string "false" (edge-case from
+  // some serializers) is never treated as truthy consent.
+  const wantEmail = (lead.optIn === true || lead.optIn === 'true') && hasEmail;
+  const wantSms   = (lead.smsConsent === true || lead.smsConsent === 'true') && !!phoneE164;
+
+  // Log before the condition so every submission is visible in Railway logs,
+  // whether or not the subscribe call ends up firing.
+  console.log('[klaviyo/consent] smsConsent=%o(type:%s) optIn=%o(type:%s) phoneE164=%s wantSms=%s wantEmail=%s listId=%s',
+    lead.smsConsent, typeof lead.smsConsent,
+    lead.optIn,     typeof lead.optIn,
+    phoneE164 || '(none)', wantSms, wantEmail, listId || '(not set)');
+
   if (listId && (wantEmail || wantSms)) {
     const subAttrs = {};
     const subscriptions = {};
@@ -345,8 +355,6 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
         relationships: { list: { data: { type: 'list', id: listId } } },
       },
     };
-    console.log('[klaviyo/subscribe] request phone=%s email=%s wantSms=%s wantEmail=%s listId=%s',
-      phoneE164 || '(none)', lead.email || '(none)', wantSms, wantEmail, listId);
     const subRes = await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/', {
       method: 'POST',
       headers,
@@ -354,6 +362,9 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
     });
     const subText = await subRes.text();
     console.log('[klaviyo/subscribe] status=%d body=%s', subRes.status, subText);
+  } else {
+    console.log('[klaviyo/consent] skipping subscribe — listId=%s wantEmail=%s wantSms=%s',
+      listId || '(not set)', wantEmail, wantSms);
   }
 
   return { ok: true, profileId, emailConsent: wantEmail, smsConsent: wantSms };
