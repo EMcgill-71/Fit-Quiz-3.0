@@ -7,6 +7,19 @@
 */
 (function () {
   const { useState, useMemo, useEffect } = React;
+
+  // Tracks whether the viewport is phone-width. Re-evaluates on resize so
+  // layouts adapt without a page reload (e.g. after rotating the device).
+  function useIsMobile() {
+    const [w, setW] = useState(() => window.innerWidth);
+    useEffect(() => {
+      const h = () => setW(window.innerWidth);
+      window.addEventListener('resize', h, { passive: true });
+      return () => window.removeEventListener('resize', h);
+    }, []);
+    return w < 600;
+  }
+
   const RED = '#EF4623';
   const BLACK = '#272727';
   const WARM = '#F1EDE7';
@@ -129,6 +142,7 @@
   }
 
   function BootPicker({ value, onChange }) {
+    const isMobile = useIsMobile();
     const [pBrand, setPBrand] = useState(value?.b || '');
     const [pFamily, setPFamily] = useState('');
     const [pFlex, setPFlex] = useState('');
@@ -286,7 +300,7 @@
         </div>
 
         {/* Brand + model filter row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.4fr', gap: 10 }}>
           <Select label="Brand" value={pBrand} onChange={(v) => { setPBrand(v); setPFamily(''); setPFlex(''); }} options={window.BRANDS} placeholder="Any brand" />
           <Select label="Model" value={pFamily}
             onChange={(v) => { setPFamily(v); setPFlex(''); }}
@@ -753,6 +767,22 @@
     const prefill = useMemo(decodeResultParam, []);
     const [step, setStep] = useState(() => prefill ? STAGES.indexOf('result') : 0);
     const [answers, setAnswers] = useState(() => prefill || {});
+    const isMobile = useIsMobile();
+
+    // When the soft keyboard opens the visual viewport shrinks, potentially
+    // hiding the field the user just tapped. This scrolls it back into view.
+    useEffect(() => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const scrollFocused = () => {
+        const el = document.activeElement;
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+      vv.addEventListener('resize', scrollFocused);
+      return () => vv.removeEventListener('resize', scrollFocused);
+    }, []);
 
     const stage = STAGES[step];
     // Visible stages exclude intro/lead/result and touring_primary when terrain !== 'touring'
@@ -816,7 +846,7 @@
     return (
       <div style={{ width: '100%', height: '100%', background: '#fff', color: BLACK, fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* header */}
-        <div style={{ padding: '20px 30px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(39,39,39,.06)' }}>
+        <div style={{ padding: isMobile ? '14px 16px 12px' : '20px 30px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(39,39,39,.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <img src="assets/logo-black.png" alt="ZipFit" style={{ height: 20 }} />
             <span style={{ ...css.eyebrow, fontSize: 11 }}>· Find my fit</span>
@@ -827,7 +857,7 @@
         </div>
 
         {/* scrolling content */}
-        <div style={{ flex: 1, padding: '30px 36px 18px', overflow: 'auto' }}>
+        <div style={{ flex: 1, padding: isMobile ? '20px 16px 24px' : '30px 36px 18px', overflow: 'auto' }}>
           {stage === 'intro' && <Intro onStart={() => setStep(1)} />}
 
           {stage === 'lead' && <LeadCapture value={answers.lead} onChange={(v) => setAns('lead', v)} />}
@@ -836,7 +866,7 @@
             <>
               <ProgressBar currentSection={q.sec} stepNum={stepNum} totalSteps={totalQs} />
               <div style={css.eyebrow}>Question {stepNum}</div>
-              <h2 style={{ ...css.h2, marginTop: 10 }}>{q.txt}</h2>
+              <h2 style={{ ...css.h2, marginTop: 10, fontSize: isMobile ? 30 : 52 }}>{q.txt}</h2>
               <p style={css.hint}>{q.hint}</p>
               {q.sub && <div style={css.sub}>📐 {q.sub}</div>}
 
@@ -848,10 +878,10 @@
                 )}
 
                 {q.type === 'anat' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${q.cols === 'f4' ? 4 : 3}, 1fr)`, gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : q.cols === 'f4' ? 4 : 3}, 1fr)`, gap: 12 }}>
                     {q.opts.map((o) => (
                       <AnatCard key={o.v} svgKey={o.s} label={o.l} desc={o.d}
-                        active={answers[q.id] === o.v} cols={q.cols === 'f4' ? 4 : 3}
+                        active={answers[q.id] === o.v} cols={isMobile ? 2 : q.cols === 'f4' ? 4 : 3}
                         onClick={() => pickAndMaybeAdvance(q.id, o.v)} />
                     ))}
                   </div>
@@ -868,10 +898,10 @@
                           <span style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670' }}>{String.fromCharCode(65 + si)}</span>
                           {sub.lbl}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${sub.cols === 'f4' ? 4 : 3}, 1fr)`, gap: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : sub.cols === 'f4' ? 4 : 3}, 1fr)`, gap: 12 }}>
                           {sub.opts.map((o) => (
                             <AnatCard key={o.v} svgKey={o.s} label={o.l} desc={o.d}
-                              active={answers[sub.id] === o.v} cols={sub.cols === 'f4' ? 4 : 3}
+                              active={answers[sub.id] === o.v} cols={isMobile ? 2 : sub.cols === 'f4' ? 4 : 3}
                               onClick={() => pickAndMaybeAdvance(sub.id, o.v)} />
                           ))}
                         </div>
@@ -951,7 +981,7 @@
 
         {/* footer nav */}
         {step > 0 && step < STAGES.length - 1 && (
-          <div style={{ padding: '14px 30px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(39,39,39,.06)', background: '#fff' }}>
+          <div style={{ padding: isMobile ? '10px 16px 14px' : '14px 30px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(39,39,39,.06)', background: '#fff' }}>
             <button onClick={back} style={btnGhost}>← Back</button>
             <button onClick={next} disabled={!canAdvance} style={btnPrimary(!canAdvance)}>
               {step === STAGES.length - 2 ? 'See my liner →' : 'Continue →'}
@@ -963,13 +993,14 @@
   }
 
   function Intro({ onStart }) {
+    const isMobile = useIsMobile();
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 520, justifyContent: 'space-between' }}>
         <div>
           <div style={css.eyebrow}>Custom liners · Made in Italy · Since 1989</div>
           <h1 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', lineHeight: .88, letterSpacing: '-.032em', margin: '20px 0 24px' }}>
-            <span style={{ display: 'block', fontSize: 46, fontWeight: 700, letterSpacing: '-.014em', color: '#4A4A4A', marginBottom: 4 }}>Find your</span>
-            <span style={{ ...rainbowText, display: 'block', fontSize: 168, lineHeight: .82 }}>ZipFit.</span>
+            <span style={{ display: 'block', fontSize: isMobile ? 28 : 46, fontWeight: 700, letterSpacing: '-.014em', color: '#4A4A4A', marginBottom: 4 }}>Find your</span>
+            <span style={{ ...rainbowText, display: 'block', fontSize: isMobile ? 88 : 168, lineHeight: .82 }}>ZipFit.</span>
           </h1>
           <p style={{ fontSize: 19, lineHeight: 1.45, color: '#4A4A4A', maxWidth: 600, margin: 0, textWrap: 'pretty' }}>
             Six questions about your shell, foot shape, and how you ski. We match you to one of seven ZipFits — handmade in Italy.
@@ -991,6 +1022,7 @@
 
   // ─── Result ─────────────────────────────────────────────────────────
   function Result({ answers, onRestart, onBack }) {
+    const isMobile = useIsMobile();
     const match = window.computeMatch(answers);
     const top = match.primary;
     if (!top) return <div>Hmm, no match found. Try adjusting your answers.</div>;
@@ -1075,7 +1107,7 @@
           <div style={{ ...css.eyebrow, fontSize: 12, color: linerColor, fontWeight: 800 }}>
             ✓ Our best match
           </div>
-          <h1 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', fontSize: 64, lineHeight: .92, letterSpacing: '-.03em', margin: '10px 0 8px', color: BLACK }}>
+          <h1 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', fontSize: isMobile ? 42 : 64, lineHeight: .92, letterSpacing: '-.03em', margin: '10px 0 8px', color: BLACK }}>
             The <span style={{ color: linerColor }}>{top.name}</span>.
           </h1>
           <p style={{ fontSize: 16, color: '#4A4A4A', margin: '0 0 16px', fontStyle: 'italic', lineHeight: 1.4, textWrap: 'balance', maxWidth: 600 }}>{top.tag}</p>
@@ -1115,7 +1147,7 @@
                   {boot.yr && <span style={{ fontWeight: 400, color: '#7A7670', marginLeft: 6 }}>({boot.yr})</span>}
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 6 }}>
                 {footProfile.map((r) => <Stat key={r.l} l={r.l} v={r.v} bg={wash} />)}
               </div>
             </Section>
@@ -1314,10 +1346,7 @@
   // production: pushed to Odoo when the user finishes the quiz so we can
   // associate the lead with their match. Values bubble up via onChange.
   function LeadCapture({ value, onChange }) {
-    // Marketing consent (optIn / smsConsent) defaults OFF — explicit opt-in, not opt-out.
-    // dataConsent is required and must be actively checked to proceed.
-    // contactPref: which channel the user wants results on ('email' | 'text'). We
-    // save both contact values regardless; only the preferred one is required.
+    const isMobile = useIsMobile();
     const lead = value || { name: '', email: '', phone: '', contactPref: 'email', optIn: false, smsConsent: false, dataConsent: false };
     const setField = (patch) => onChange({ ...lead, ...patch });
     // Auto-pick the phone country from the visitor's locale on first render so
@@ -1343,7 +1372,7 @@
     return (
       <div>
         <div style={css.eyebrow}>Let’s get started</div>
-        <h2 style={{ ...css.h2, marginTop: 10 }}>First, who are we fitting?</h2>
+        <h2 style={{ ...css.h2, marginTop: 10, fontSize: isMobile ? 30 : 52 }}>First, who are we fitting?</h2>
         <p style={css.hint}>
           We’ll send your match so you can refer back to it anytime — and so a ZipFit bootfitter can follow up if you want help dialing in the fit.
         </p>
