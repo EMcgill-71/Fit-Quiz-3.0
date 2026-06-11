@@ -749,6 +749,13 @@
 
   // Decode a ?r= result token so follow-up email/SMS links land directly on the
   // result screen. Returns a partial answers object or null if absent/invalid.
+  //
+  // Two token formats are supported:
+  //   • compact (current) — short keys; boot stored as its index `b` and
+  //     rehydrated from window.BOOTS here, which keeps the link short.
+  //   • legacy (long)     — full key names with the whole boot object inline.
+  // Reading both means links already sent out before the format change still
+  // resolve correctly.
   function decodeResultParam() {
     try {
       const p = new URLSearchParams(window.location.search).get('r');
@@ -756,7 +763,27 @@
       // base64url → standard base64 (restore padding stripped by Node's encoder)
       const b64 = p.replace(/-/g, '+').replace(/_/g, '/');
       const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
-      return JSON.parse(atob(padded));
+      const o = JSON.parse(atob(padded));
+
+      // Rehydrate the boot: compact tokens carry just the index in `b`; legacy
+      // tokens carry the full object in `boot`.
+      let boot = o.boot || null;
+      if (boot == null && Number.isInteger(o.b) && Array.isArray(window.BOOTS)) {
+        boot = window.BOOTS.find((x) => x.i === o.b) || null;
+      }
+
+      return {
+        lead:            { name: o.n || o.lead?.name || '' },
+        boot,
+        ff:              o.ff || null,
+        ins:             o.is || o.ins || null,
+        ank:             o.ak || o.ank || null,
+        cal:             o.cl || o.cal || null,
+        fit_problem:     o.fp || o.fit_problem || null,
+        terrain:         o.tr || o.terrain || null,
+        touring_primary: o.tp || o.touring_primary || null,
+        ability:         o.ab || o.ability || null,
+      };
     } catch (err) {
       console.error('[quiz] failed to decode ?r= token:', err);
       return null;

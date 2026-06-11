@@ -180,20 +180,26 @@ function normalizePhone(raw, dialCode) {
 // ─────────────────────────────────────────────────────────────────────────
 // Builds a shareable URL that loads the quiz directly on the result screen.
 // Encoded as base64url JSON so it survives email link tracking without issues.
+//
+// The link is kept short by (a) storing the boot's stable index `boot.i`
+// instead of the whole boot object — the client rehydrates it from
+// window.BOOTS — (b) using one/two-char keys, and (c) omitting empty answers
+// (JSON.stringify drops `undefined`). The client decoder still accepts the
+// older long format too, so any links already sent out keep working.
 function buildResultUrl({ lead, boot, answers }) {
   const base = (process.env.QUIZ_URL || '').replace(/\/$/, '');
   if (!base) return null;
   const token = Buffer.from(JSON.stringify({
-    lead:            { name: lead.name },
-    boot:            boot                       || null,
-    ff:              answers?.ff                || null,
-    ins:             answers?.ins               || null,
-    ank:             answers?.ank               || null,
-    cal:             answers?.cal               || null,
-    fit_problem:     answers?.fit_problem       || null,
-    terrain:         answers?.terrain           || null,
-    touring_primary: answers?.touring_primary   || null,
-    ability:         answers?.ability           || null,
+    n:  lead.name || undefined,
+    b:  (boot && Number.isInteger(boot.i)) ? boot.i : undefined,
+    ff: answers?.ff              || undefined,
+    is: answers?.ins             || undefined,
+    ak: answers?.ank             || undefined,
+    cl: answers?.cal             || undefined,
+    fp: answers?.fit_problem     || undefined,
+    tr: answers?.terrain         || undefined,
+    tp: answers?.touring_primary || undefined,
+    ab: answers?.ability         || undefined,
   })).toString('base64url');
   return `${base}/?r=${token}`;
 }
