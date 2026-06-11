@@ -791,10 +791,24 @@
   }
 
   function QuizEditorial() {
-    const prefill = useMemo(decodeResultParam, []);
-    const [step, setStep] = useState(() => prefill ? STAGES.indexOf('result') : 0);
-    const [answers, setAnswers] = useState(() => prefill || {});
+    // ?p= — Klaviyo profile ID (short link, async fetch)
+    // ?r= — self-contained base64 token (legacy / fallback)
+    const pid          = useMemo(() => new URLSearchParams(window.location.search).get('p'), []);
+    const tokenPrefill = useMemo(decodeResultParam, []);
+
+    const [step,          setStep]          = useState(() => (tokenPrefill || pid) ? STAGES.indexOf('result') : 0);
+    const [answers,       setAnswers]        = useState(() => tokenPrefill || {});
+    const [loadingResult, setLoadingResult]  = useState(!!pid && !tokenPrefill);
     const isMobile = useIsMobile();
+
+    // Fetch quiz answers from the server when the link carries a Klaviyo profile ID.
+    useEffect(() => {
+      if (!pid || tokenPrefill) return;
+      fetch(`/api/fit-quiz/result/${encodeURIComponent(pid)}`)
+        .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+        .then((data) => { setAnswers(data); setLoadingResult(false); })
+        .catch(() => { setStep(0); setLoadingResult(false); });
+    }, []);
 
     // When the soft keyboard opens the visual viewport shrinks, potentially
     // hiding the field the user just tapped. This scrolls it back into view.
@@ -1003,7 +1017,12 @@
             </>
           )}
 
-          {stage === 'result' && <Result answers={answers} onRestart={restart} onBack={back} />}
+          {stage === 'result' && loadingResult && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#7A7670' }}>Loading your results…</span>
+            </div>
+          )}
+          {stage === 'result' && !loadingResult && <Result answers={answers} onRestart={restart} onBack={back} />}
         </div>
 
         {/* footer nav */}

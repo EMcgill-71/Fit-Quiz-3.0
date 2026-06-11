@@ -86,6 +86,58 @@ app.use(express.static(join(__dirname, '.'), {
 // Health check for Railway.
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
+// ── Result deep-link: fetch stored quiz answers from Klaviyo ─────────────
+// Called by the client when it sees ?p=<profileId> in the URL (set by the
+// server after each submission). Returns just the fields needed to render
+// the result screen — not PII like email/phone.
+app.get('/api/fit-quiz/result/:profileId', async (req, res) => {
+  const apiKey = process.env.KLAVIYO_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: 'not_configured' });
+
+  const r = await fetch(
+    `https://a.klaviyo.com/api/profiles/${encodeURIComponent(req.params.profileId)}/?fields[profile]=first_name,properties`,
+    { headers: { 'Authorization': `Klaviyo-API-Key ${apiKey}`, 'revision': '2023-12-15' } },
+  ).catch(() => null);
+
+  if (!r || !r.ok) return res.status(404).json({ error: 'profile_not_found' });
+
+  const data = await r.json();
+  const attrs  = data.data?.attributes || {};
+  const p      = attrs.properties || {};
+
+  // Reconstruct boot — stored fields are enough for computeMatch and display.
+  const boot = (p.fit_quiz_boot_brand || p.fit_quiz_boot_model) ? {
+    i: Number.isInteger(p.fit_quiz_boot_index) ? p.fit_quiz_boot_index : null,
+    b: p.fit_quiz_boot_brand || null,
+    m: p.fit_quiz_boot_model || null,
+    y: p.fit_quiz_boot_year  || null,
+    l: p.fit_quiz_last_mm    || null,
+    v: p.fit_quiz_volume     || null,
+    f: p.fit_quiz_boot_flex  || null,
+  } : null;
+
+  // fit_problems stored as "heel_lift, shin_bang" → array
+  const fp = p.fit_quiz_fit_problems;
+  const fitProblem = fp ? fp.split(',').map((s) => s.trim()).filter(Boolean) : null;
+
+  // terrain stored as "resort,touring" → array
+  const tr = p.fit_quiz_terrain;
+  const terrain = tr ? tr.split(',').map((s) => s.trim()).filter(Boolean) : null;
+
+  res.json({
+    lead:            { name: attrs.first_name || '' },
+    boot,
+    ff:              p.fit_quiz_forefoot        || null,
+    ins:             p.fit_quiz_instep          || null,
+    ank:             p.fit_quiz_ankle           || null,
+    cal:             p.fit_quiz_calf            || null,
+    fit_problem:     fitProblem,
+    terrain,
+    touring_primary: p.fit_quiz_touring_primary || null,
+    ability:         p.fit_quiz_ability         || null,
+  });
+});
+
 // ── Lead submit endpoint ──────────────────────────────────────────────────
 app.post('/api/fit-quiz/submit', async (req, res) => {
   const payload = req.body || {};
@@ -178,30 +230,13 @@ function normalizePhone(raw, dialCode) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Builds a shareable URL that loads the quiz directly on the result screen.
-// Encoded as base64url JSON so it survives email link tracking without issues.
-//
-// The link is kept short by (a) storing the boot's stable index `boot.i`
-// instead of the whole boot object — the client rehydrates it from
-// window.BOOTS — (b) using one/two-char keys, and (c) omitting empty answers
-// (JSON.stringify drops `undefined`). The client decoder still accepts the
-// older long format too, so any links already sent out keep working.
-function buildResultUrl({ lead, boot, answers }) {
+// Builds a short result URL using the Klaviyo profile ID as the only
+// parameter. The server fetches the stored quiz answers from Klaviyo when
+// the link is opened via GET /api/fit-quiz/result/:profileId.
+// Returns null if QUIZ_URL is not configured.
+function buildResultUrl(profileId) {
   const base = (process.env.QUIZ_URL || '').replace(/\/$/, '');
-  if (!base) return null;
-  const token = Buffer.from(JSON.stringify({
-    n:  lead.name || undefined,
-    b:  (boot && Number.isInteger(boot.i)) ? boot.i : undefined,
-    ff: answers?.ff              || undefined,
-    is: answers?.ins             || undefined,
-    ak: answers?.ank             || undefined,
-    cl: answers?.cal             || undefined,
-    fp: answers?.fit_problem     || undefined,
-    tr: answers?.terrain         || undefined,
-    tp: answers?.touring_primary || undefined,
-    ab: answers?.ability         || undefined,
-  })).toString('base64url');
-  return `${base}/?r=${token}`;
+  return (base && profileId) ? `${base}/?p=${profileId}` : null;
 }
 
 async function pushToKlaviyo({ lead, boot, answers, match }) {
@@ -219,36 +254,41 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
     : [answers?.fit_problem]
   ).filter(Boolean);
 
-  const resultUrl = buildResultUrl({ lead, boot, answers });
   const phoneE164 = normalizePhone(lead.phone, lead.dialCode);
   const hasEmail = !!lead.email;
   const contactPref = lead.contactPref === 'text' ? 'text' : 'email';
 
+  // terrain is an array — join to a comma string for Klaviyo storage so
+  // the result endpoint can split it back out.
+  const terrainStr = Array.isArray(answers?.terrain)
+    ? answers.terrain.join(',')
+    : (answers?.terrain || null);
+
+  // Step 1 — upsert profile. result_url not yet known (need profileId first).
   const profileProps = {
     first_name: lead.name,
-    // Save both identifiers when present; the user only needs to provide their
-    // preferred one (email OR text). Klaviyo requires at least one.
     ...(hasEmail ? { email: lead.email } : {}),
-    // Klaviyo requires E.164 format; only attach when we could normalize it,
-    // otherwise an invalid number would 400 the entire profile request.
     ...(phoneE164 ? { phone_number: phoneE164 } : {}),
     properties: {
-      fit_quiz_contact_pref: contactPref,
-      fit_quiz_liner:        match?.name  || null,
-      fit_quiz_liner_id:     match?.id    || null,
-      fit_quiz_boot_brand:   boot?.b      || null,
-      fit_quiz_boot_model:   boot?.m      || null,
-      fit_quiz_boot_year:    boot?.y      || null,
-      fit_quiz_last_mm:      boot?.l      || null,
-      fit_quiz_volume:       boot?.v      || null,
-      fit_quiz_forefoot:     answers?.ff  || null,
-      fit_quiz_instep:       answers?.ins || null,
-      fit_quiz_ankle:        answers?.ank || null,
-      fit_quiz_calf:         answers?.cal || null,
-      fit_quiz_ability:      answers?.ability || null,
-      fit_quiz_fit_problems: fitProblems.join(', ') || null,
-      fit_quiz_completed_at: new Date().toISOString(),
-      fit_quiz_result_url:   resultUrl,
+      fit_quiz_contact_pref:    contactPref,
+      fit_quiz_liner:           match?.name  || null,
+      fit_quiz_liner_id:        match?.id    || null,
+      fit_quiz_boot_brand:      boot?.b      || null,
+      fit_quiz_boot_model:      boot?.m      || null,
+      fit_quiz_boot_year:       boot?.y      || null,
+      fit_quiz_boot_index:      (boot && Number.isInteger(boot.i)) ? boot.i : null,
+      fit_quiz_boot_flex:       boot?.f      || null,
+      fit_quiz_last_mm:         boot?.l      || null,
+      fit_quiz_volume:          boot?.v      || null,
+      fit_quiz_forefoot:        answers?.ff  || null,
+      fit_quiz_instep:          answers?.ins || null,
+      fit_quiz_ankle:           answers?.ank || null,
+      fit_quiz_calf:            answers?.cal || null,
+      fit_quiz_ability:         answers?.ability         || null,
+      fit_quiz_fit_problems:    fitProblems.join(', ')   || null,
+      fit_quiz_terrain:         terrainStr,
+      fit_quiz_touring_primary: answers?.touring_primary || null,
+      fit_quiz_completed_at:    new Date().toISOString(),
       // Consent audit trail
       fit_quiz_data_consent:  !!lead.dataConsent,
       fit_quiz_email_consent: !!lead.optIn,
@@ -257,13 +297,10 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
     },
   };
 
-  // Step 1 — upsert profile
   const profileRes = await fetch('https://a.klaviyo.com/api/profiles/', {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      data: { type: 'profile', attributes: profileProps },
-    }),
+    body: JSON.stringify({ data: { type: 'profile', attributes: profileProps } }),
   });
 
   // 409 means the profile already exists — Klaviyo returns the existing profile id
@@ -276,9 +313,7 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
       await fetch(`https://a.klaviyo.com/api/profiles/${profileId}/`, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({
-          data: { type: 'profile', id: profileId, attributes: profileProps },
-        }),
+        body: JSON.stringify({ data: { type: 'profile', id: profileId, attributes: profileProps } }),
       });
     }
   } else if (profileRes.ok) {
@@ -287,6 +322,18 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
   } else {
     const text = await profileRes.text();
     throw new Error(`klaviyo_profile_${profileRes.status}: ${text.slice(0, 200)}`);
+  }
+
+  // Now we have profileId — build the short result URL and store it on the profile.
+  const resultUrl = buildResultUrl(profileId);
+  if (profileId && resultUrl) {
+    await fetch(`https://a.klaviyo.com/api/profiles/${profileId}/`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        data: { type: 'profile', id: profileId, attributes: { properties: { fit_quiz_result_url: resultUrl } } },
+      }),
+    });
   }
 
   // Step 2 — track event
