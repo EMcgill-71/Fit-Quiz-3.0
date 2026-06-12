@@ -51,8 +51,8 @@
   window.LABELS = {
     ff:  { narrow: 'Narrow', medium: 'Medium', wide: 'Wide', vwide: 'Very Wide' },
     ins: { low: 'Low / Flat', medium: 'Medium', high: 'High' },
-    ank: { low: 'Bony / Lean', medium: 'Average', high: 'Full / Fleshy' },
-    cal: { low: 'Lean / Narrow', medium: 'Medium', high: 'Full / Muscular' },
+    ank: { low: 'Lean', medium: 'Average', high: 'Full' },
+    cal: { low: 'Lean', medium: 'Medium', high: 'Muscular' },
     ability: { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced', 4: 'Expert / Racer' },
   };
 
