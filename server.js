@@ -114,6 +114,7 @@ app.get('/api/fit-quiz/result/:profileId', async (req, res) => {
     l: p.fit_quiz_last_mm    || null,
     v: p.fit_quiz_volume     || null,
     f: p.fit_quiz_boot_flex  || null,
+    sz: p.fit_quiz_boot_size || null,
   } : null;
 
   // fit_problems stored as "heel_lift, shin_bang" → array
@@ -135,6 +136,7 @@ app.get('/api/fit-quiz/result/:profileId', async (req, res) => {
     terrain,
     touring_primary: p.fit_quiz_touring_primary || null,
     ability:         p.fit_quiz_ability         || null,
+    foot_len:        p.fit_quiz_foot_length != null ? p.fit_quiz_foot_length : undefined,
   });
 });
 
@@ -278,8 +280,10 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
       fit_quiz_boot_year:       boot?.y      || null,
       fit_quiz_boot_index:      (boot && Number.isInteger(boot.i)) ? boot.i : null,
       fit_quiz_boot_flex:       boot?.f      || null,
+      fit_quiz_boot_size:       boot?.sz     || null,
       fit_quiz_last_mm:         boot?.l      || null,
       fit_quiz_volume:          boot?.v      || null,
+      fit_quiz_foot_length:     answers?.foot_len != null ? parseFloat(answers.foot_len) : null,
       fit_quiz_forefoot:        answers?.ff  || null,
       fit_quiz_instep:          answers?.ins || null,
       fit_quiz_ankle:           answers?.ank || null,

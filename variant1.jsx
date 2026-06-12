@@ -265,6 +265,25 @@
             <DnaCell label="Volume" value={value.v && value.v !== 'nan' ? value.v : '—'} accent={volColor} />
             <DnaCell label="Flex" value={value.f || '—'} />
           </div>
+          <div style={{ padding: '14px 22px 0' }}>
+            <div style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670', marginBottom: 6 }}>Your mondo size (optional)</div>
+            <select
+              value={value.sz || ''}
+              onChange={(e) => onChange({ ...value, sz: e.target.value || null })}
+              style={{
+                width: '100%', padding: '10px 12px',
+                border: '1.5px solid rgba(39,39,39,.18)', borderRadius: 6,
+                fontFamily: 'Inter, sans-serif', fontSize: 14, color: value.sz ? BLACK : '#7A7670',
+                background: '#fff', outline: 'none', cursor: 'pointer',
+              }}
+            >
+              <option value="">Select size…</option>
+              {Array.from({ length: 21 }, (_, i) => {
+                const s = (22 + i * 0.5).toFixed(1);
+                return <option key={s} value={s}>{s}</option>;
+              })}
+            </select>
+          </div>
         </div>
       );
     }
@@ -745,7 +764,7 @@
   }
 
   // ─── main quiz ──────────────────────────────────────────────────────
-  const STAGES = ['intro', 'lead', 'boot', 'ff', 'ins', 'ank', 'cal', 'fit_problem', 'terrain', 'touring_primary', 'ability', 'result'];
+  const STAGES = ['intro', 'lead', 'boot', 'foot_len', 'ff', 'ins', 'ank', 'cal', 'fit_problem', 'terrain', 'touring_primary', 'ability', 'result'];
 
   // Decode a ?r= result token so follow-up email/SMS links land directly on the
   // result screen. Returns a partial answers object or null if absent/invalid.
@@ -855,6 +874,10 @@
         return !!l.name && prefOk && otherOk && !!l.dataConsent;
       }
       if (stage === 'boot') return !!answers.boot;
+      if (stage === 'foot_len') {
+        const v = parseFloat(answers.foot_len);
+        return !isNaN(v) && v >= 18 && v <= 35;
+      }
       if (stage === 'result') return false;
       if (stage === 'fit_problem' || stage === 'terrain') {
         const a = answers[stage];
@@ -916,6 +939,45 @@
                   <BootPicker value={answers.boot} onChange={(b) => {
                     setAns('boot', b);
                   }} />
+                )}
+
+                {q.type === 'number' && (
+                  <div style={{ maxWidth: 280 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <input
+                        type="number"
+                        min={q.min}
+                        max={q.max}
+                        step="0.5"
+                        value={answers[q.id] !== undefined ? answers[q.id] : ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setAns(q.id, raw === '' ? undefined : parseFloat(raw));
+                        }}
+                        placeholder="e.g. 26.5"
+                        style={{
+                          flex: 1,
+                          padding: '16px 14px',
+                          border: `1.5px solid ${answers[q.id] !== undefined ? BLACK : 'rgba(39,39,39,.22)'}`,
+                          borderRadius: 8,
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 28,
+                          fontWeight: 700,
+                          color: BLACK,
+                          outline: 'none',
+                          background: '#fff',
+                          textAlign: 'center',
+                          MozAppearance: 'textfield',
+                        }}
+                      />
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 20, fontWeight: 600, color: '#7A7670' }}>cm</span>
+                    </div>
+                    {answers[q.id] !== undefined && (
+                      <div style={{ marginTop: 12, fontSize: 14, color: '#7A7670' }}>
+                        Suggested mondo size: <strong style={{ color: BLACK }}>{(Math.round(parseFloat(answers[q.id]) * 2) / 2).toFixed(1)}</strong>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {q.type === 'anat' && (
@@ -1117,6 +1179,7 @@
             ff: answers.ff, ins: answers.ins, ank: answers.ank, cal: answers.cal,
             fit_problem: answers.fit_problem, ability: answers.ability,
             terrain: answers.terrain, touring_primary: answers.touring_primary,
+            foot_len: answers.foot_len,
           },
           submittedAt: new Date().toISOString(),
         }),
@@ -1182,6 +1245,29 @@
           </div>
         </div>
 
+
+        {/* Size recommendation */}
+        {answers.foot_len !== undefined && (
+          <div style={revealStyle(80)}>
+            <Section title="Suggested sizing" accent={linerColor}>
+              {(() => {
+                const cm = parseFloat(answers.foot_len);
+                const mondo = (Math.round(cm * 2) / 2).toFixed(1);
+                const shellMondo = (Math.round((cm + 0.5) * 2) / 2).toFixed(1);
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 6 }}>
+                    <Stat l="Foot length" v={`${cm} cm`} bg={wash} />
+                    <Stat l="Liner size" v={`Mondo ${mondo}`} bg={wash} />
+                    <Stat l="Shell mondo" v={`${mondo} – ${shellMondo}`} bg={wash} />
+                  </div>
+                );
+              })()}
+              <p style={{ fontSize: 13, color: '#7A7670', margin: '10px 0 0', lineHeight: 1.45 }}>
+                Shell fit varies by brand and last — your bootfitter will dial in the exact shell size.
+              </p>
+            </Section>
+          </div>
+        )}
 
         {/* Foot profile */}
         {footProfile.length > 0 && (
