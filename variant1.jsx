@@ -974,7 +974,7 @@
                     </div>
                     {answers[q.id] !== undefined && (
                       <div style={{ marginTop: 12, fontSize: 14, color: '#7A7670' }}>
-                        Suggested mondo size: <strong style={{ color: BLACK }}>{(Math.round(parseFloat(answers[q.id]) * 2) / 2).toFixed(1)}</strong>
+                        Your foot measures mondo <strong style={{ color: BLACK }}>{(Math.round(parseFloat(answers[q.id]) * 2) / 2).toFixed(1)}</strong>
                       </div>
                     )}
                   </div>
@@ -1200,6 +1200,16 @@
       { l: 'Calf',     v: window.LABELS.cal[answers.cal] },
     ].filter((r) => r.v);
 
+    // Sizing suggestion — the liner has to fill the shell, so when the skier
+    // told us their shell's mondo size we size the liner to the shell. The
+    // foot measurement is the anchor when no shell size was given, and lets
+    // us flag a foot/shell mismatch. None of this changes WHICH liner we pick.
+    const footCm    = answers.foot_len !== undefined ? parseFloat(answers.foot_len) : NaN;
+    const footMondo = !isNaN(footCm) ? Math.round(footCm * 2) / 2 : null;
+    const shellSz   = boot.sz ? parseFloat(boot.sz) : null;
+    const linerSize = shellSz != null ? shellSz : footMondo;
+    const sizeDelta = (shellSz != null && footMondo != null) ? shellSz - footMondo : null;
+
     return (
       <div>
         {/* ── Hero: tinted card with liner photo on a color-washed backdrop ── */}
@@ -1219,6 +1229,17 @@
           <h1 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', fontSize: isMobile ? 42 : 64, lineHeight: .92, letterSpacing: '-.03em', margin: '10px 0 8px', color: BLACK }}>
             The <span style={{ color: linerColor }}>{top.name}</span>.
           </h1>
+          {linerSize != null && (
+            <div style={{
+              display: 'inline-block', marginBottom: 10,
+              padding: '6px 14px', borderRadius: 999,
+              background: linerColor, color: '#fff',
+              fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700,
+              letterSpacing: '.04em',
+            }}>
+              Suggested size · Mondo {linerSize.toFixed(1)}
+            </div>
+          )}
           <p style={{ fontSize: 16, color: '#4A4A4A', margin: '0 0 16px', fontStyle: 'italic', lineHeight: 1.4, textWrap: 'balance', maxWidth: 600 }}>{top.tag}</p>
 
           {/* Photo on a fuller wash — gives the product real stage presence */}
@@ -1246,24 +1267,25 @@
         </div>
 
 
-        {/* Size recommendation */}
-        {answers.foot_len !== undefined && (
+        {/* Size recommendation — liner sized to the shell when known, foot otherwise */}
+        {linerSize != null && (
           <div style={revealStyle(80)}>
             <Section title="Suggested sizing" accent={linerColor}>
-              {(() => {
-                const cm = parseFloat(answers.foot_len);
-                const mondo = (Math.round(cm * 2) / 2).toFixed(1);
-                const shellMondo = (Math.round((cm + 0.5) * 2) / 2).toFixed(1);
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 6 }}>
-                    <Stat l="Foot length" v={`${cm} cm`} bg={wash} />
-                    <Stat l="Liner size" v={`Mondo ${mondo}`} bg={wash} />
-                    <Stat l="Shell mondo" v={`${mondo} – ${shellMondo}`} bg={wash} />
-                  </div>
-                );
-              })()}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 6 }}>
+                {footMondo != null && <Stat l="Foot length" v={`${footCm} cm`} bg={wash} />}
+                {shellSz != null && <Stat l="Your shell size" v={`Mondo ${shellSz.toFixed(1)}`} bg={wash} />}
+                <Stat l={`${top.name} size`} v={`Mondo ${linerSize.toFixed(1)}`} bg={wash} />
+              </div>
               <p style={{ fontSize: 13, color: '#7A7670', margin: '10px 0 0', lineHeight: 1.45 }}>
-                Shell fit varies by brand and last — your bootfitter will dial in the exact shell size.
+                {shellSz != null
+                  ? <>Your liner needs to fill your shell, so we size the <strong style={{ color: BLACK }}>{top.name}</strong> to your shell&#39;s mondo size.</>
+                  : <>Based on your foot measurement. If you know your shell&#39;s mondo size, match the liner to the shell — it needs to fill the shell.</>}
+                {sizeDelta != null && sizeDelta >= 1 && (
+                  <> Your shell runs about <strong style={{ color: BLACK }}>{sizeDelta.toFixed(1)} sizes larger</strong> than your foot — the {top.name}&#39;s cork fill will take up that extra volume.</>
+                )}
+                {sizeDelta != null && sizeDelta <= -0.5 && (
+                  <> Heads up: your shell is <strong style={{ color: BLACK }}>smaller than your foot measurement</strong> — worth confirming the shell size with your bootfitter.</>
+                )}
               </p>
             </Section>
           </div>

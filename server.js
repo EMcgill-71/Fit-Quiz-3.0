@@ -275,6 +275,10 @@ async function pushToKlaviyo({ lead, boot, answers, match }) {
       fit_quiz_contact_pref:    contactPref,
       fit_quiz_liner:           match?.name  || null,
       fit_quiz_liner_id:        match?.id    || null,
+      // Liner is sized to the shell when the skier gave a shell mondo size,
+      // otherwise to the measured foot length rounded to the nearest 0.5.
+      fit_quiz_liner_size:      boot?.sz ? parseFloat(boot.sz)
+                                : (answers?.foot_len != null ? Math.round(parseFloat(answers.foot_len) * 2) / 2 : null),
       fit_quiz_boot_brand:      boot?.b      || null,
       fit_quiz_boot_model:      boot?.m      || null,
       fit_quiz_boot_year:       boot?.y      || null,
