@@ -266,23 +266,33 @@
             <DnaCell label="Flex" value={value.f || '—'} />
           </div>
           <div style={{ padding: '14px 22px 0' }}>
-            <div style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670', marginBottom: 6 }}>Your mondo size (optional)</div>
-            <select
-              value={value.sz || ''}
-              onChange={(e) => onChange({ ...value, sz: e.target.value || null })}
-              style={{
-                width: '100%', padding: '10px 12px',
-                border: '1.5px solid rgba(39,39,39,.18)', borderRadius: 6,
-                fontFamily: 'Inter, sans-serif', fontSize: 14, color: value.sz ? BLACK : '#7A7670',
-                background: '#fff', outline: 'none', cursor: 'pointer',
-              }}
-            >
-              <option value="">Select size…</option>
-              {Array.from({ length: 21 }, (_, i) => {
-                const s = (22 + i * 0.5).toFixed(1);
-                return <option key={s} value={s}>{s}</option>;
-              })}
-            </select>
+            <div style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670', marginBottom: 6 }}>Your shell's mondo size (optional)</div>
+            {(() => {
+              const rangeCode = window.BOOT_SIZES && window.BOOT_SIZES[value.b + '|' + value.m];
+              const rangeStr  = rangeCode && window.BOOT_SIZES_KEY ? window.BOOT_SIZES_KEY[rangeCode] : null;
+              let minSz = 22.0, maxSz = 32.0;
+              if (rangeStr) {
+                const [lo, hi] = rangeStr.split('-').map(Number);
+                if (!isNaN(lo) && !isNaN(hi)) { minSz = lo; maxSz = hi; }
+              }
+              const steps = [];
+              for (let s = minSz; s <= maxSz + 0.01; s += 0.5) steps.push(s.toFixed(1));
+              return (
+                <select
+                  value={value.sz || ''}
+                  onChange={(e) => onChange({ ...value, sz: e.target.value || null })}
+                  style={{
+                    width: '100%', padding: '10px 12px',
+                    border: '1.5px solid rgba(39,39,39,.18)', borderRadius: 6,
+                    fontFamily: 'Inter, sans-serif', fontSize: 14, color: value.sz ? BLACK : '#7A7670',
+                    background: '#fff', outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">{rangeStr ? `Sizes ${rangeStr} — select yours` : 'Select size…'}</option>
+                  {steps.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              );
+            })()}
           </div>
         </div>
       );
