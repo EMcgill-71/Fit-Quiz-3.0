@@ -133,12 +133,19 @@
     );
   }
 
-  // Each boot in BOOTS carries a pre-classified `fam` field (curated families
-  // from the Ski Boot Database). Keep this lightweight fallback for any future
-  // boots that lack the field.
+  // Derive a display family from a model name by stripping variant noise:
+  // volume codes (LV/MV/HV), BOA closures (BOA, Dual BOA), and 2-3 digit
+  // flex/width numbers. Structural words like XTD, Carbon, Pro, Tour, Race,
+  // Free, etc. stay so genuinely different product lines remain distinct.
   function familyOf(boot) {
-    if (typeof boot === 'string') return boot.replace(/\s+\d{2,3}\b.*$/, '').trim() || boot;
-    return boot.fam || (boot.m || '').replace(/\s+\d{2,3}\b.*$/, '').trim() || boot.m;
+    const name = typeof boot === 'string' ? boot : (boot.fam || boot.m || '');
+    return name
+      .replace(/\bDual\s+BOA\b/gi, '')      // "Dual BOA" → gone
+      .replace(/\bBOA\b/gi, '')              // lone "BOA" → gone
+      .replace(/\b(LV|MV|HV)\b/gi, '')      // volume codes → gone
+      .replace(/\b\d{2,3}\b/g, '')           // 2-3 digit numbers (flex, width) → gone
+      .replace(/\s{2,}/g, ' ')               // collapse whitespace
+      .trim() || name;
   }
 
   function BootPicker({ value, onChange }) {
