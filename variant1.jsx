@@ -268,8 +268,7 @@
           <div style={{ padding: '14px 22px 0' }}>
             <div style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670', marginBottom: 6 }}>Your shell's mondo size (optional)</div>
             {(() => {
-              const rangeCode = window.BOOT_SIZES && window.BOOT_SIZES[value.b + '|' + value.m];
-              const rangeStr  = rangeCode && window.BOOT_SIZES_KEY ? window.BOOT_SIZES_KEY[rangeCode] : null;
+              const rangeStr = value.szr || null;
               let minSz = 22.0, maxSz = 32.0;
               if (rangeStr) {
                 const [lo, hi] = rangeStr.split('-').map(Number);
