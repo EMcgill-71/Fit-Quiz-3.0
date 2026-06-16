@@ -199,13 +199,13 @@ function scoreLiners(){
     // Espresso: ultralight LV touring — only when touring is primary use
     if(l.id==='espresso'){
       var isUL=isTourPrimary&&last>0&&last<=100&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
-      if(!isUL)return{l:l,s:-999};s+=92;
+      if(!isUL)return{l:l,s:-999};s+=98;
     }
     // GFT: 96mm DH or strong boost when touring is primary use
     if(l.id==='gft'){
       var isDH=!boot.w&&last===96;
       var isTour=isTourPrimary&&last>0&&last>=96;
-      if(isDH)s+=90;else if(isTour)s+=88;
+      if(isDH)s+=90;else if(isTour)s+=96;
     }
     // Gara LV: 96-100mm, lean/avg calf — penalty when touring is primary use
     // Full/fleshy ankle → LV (natural tissue already fills the shell; LV liner fits precisely)
