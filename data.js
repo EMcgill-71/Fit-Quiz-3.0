@@ -201,11 +201,11 @@ function scoreLiners(){
       var isUL=isTourPrimary&&last>0&&last<=100&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
       if(!isUL)return{l:l,s:-999};s+=98;
     }
-    // GFT: 96mm DH or strong boost when touring is primary use
+    // GFT: base 70; +50 walk mode; +70 touring primary + shell >98mm
     if(l.id==='gft'){
-      var isDH=!boot.w&&last===96;
-      var isTour=isTourPrimary&&last>0&&last>=96;
-      if(isDH)s+=90;else if(isTour)s+=96;
+      s+=70;
+      if(boot.w)s+=50;
+      if(isTourPrimary&&last>98)s+=70;
     }
     // Gara LV: 96-100mm, lean/avg calf — penalty when touring is primary use
     // Full/fleshy ankle → LV (natural tissue already fills the shell; LV liner fits precisely)
@@ -231,11 +231,13 @@ function scoreLiners(){
       else if(ans.ank==='low'&&ans.ins==='low')s+=30;
       else if(ans.ank==='low')s-=10;
     }
-    // Freeride: 100-106mm, +30 large calf, +12 when touring is primary use
+    // Freeride: 100-106mm, +30 large calf, +25 walk mode, +20 park terrain, +12 touring primary
     if(l.id==='freeride'){
       if(last>0&&(last<100||last>106))return{l:l,s:-999};
       s+=70;
       if(ans.cal==='high')s+=30;
+      if(boot.w)s+=25;
+      if(terrainArr.indexOf('park')>-1)s+=20;
       if(isTourPrimary)s+=12;
     }
     // Workhorse: 100-106mm, expert only
