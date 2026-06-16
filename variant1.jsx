@@ -146,13 +146,13 @@
       .replace(/\b(LV|MV|HV)\b/gi, '')
       .replace(/\b\d{2,3}\b/g, '')           // flex/width numbers
       .replace(/\bSki\s+Boots?\b\s*\d*/gi, '') // "Ski Boots 2025" noise
-      .replace(/[®™’’’]/g, ‘’)      // trademark / smart-quote symbols
-      .replace(/\(\s*\)/g, ‘’)                // empty parens "()"
-      .replace(/\b([A-Z])\.([A-Z])\./gi, ‘$1$2’) // dotted abbrevs: I.R. → IR, T.I. → TI
-      .replace(/\s\.\s/g, ‘ ‘)               // " . " spacing noise → space
-      .replace(/,/g, ‘.’)                     // commas → periods (Ten,2 → Ten.2)
-      .replace(/\s\/\s/g, ‘ ‘)                // " / " separator → space
-      .replace(/(^|\s)\/+/g, ‘ ‘)             // leading/mid standalone slashes
+      .replace(/[®™''']/g, '')      // trademark / smart-quote symbols
+      .replace(/\(\s*\)/g, '')                // empty parens "()"
+      .replace(/\b([A-Z])\.([A-Z])\./gi, '$1$2') // dotted abbrevs: I.R. → IR, T.I. → TI
+      .replace(/\s\.\s/g, ' ')               // " . " spacing noise → space
+      .replace(/,/g, '.')                     // commas → periods (Ten,2 → Ten.2)
+      .replace(/\s\/\s/g, ' ')                // " / " separator → space
+      .replace(/(^|\s)\/+/g, ' ')             // leading/mid standalone slashes
       .replace(/\s{2,}/g, ' ')
       .trim() || name;
     // Title-case; preserve 2-3 char all-alpha uppercase abbreviations (XTD, TI, NTN, IR…)
@@ -1438,7 +1438,7 @@
                     : answers.lead.email;
                   const verb = sendByText ? 'text' : 'email';
                   return (
-                    <>We’ll {verb} the <strong style={{ color: '#fff' }}>{top.name}</strong> pairing to <strong style={{ color: '#fff' }}>{dest}</strong> so you can refer back to it anytime.</>
+                    <>We'll {verb} the <strong style={{ color: '#fff' }}>{top.name}</strong> pairing to <strong style={{ color: '#fff' }}>{dest}</strong> so you can refer back to it anytime.</>
                   );
                 })()}
               </p>
@@ -1570,10 +1570,10 @@
 
     return (
       <div>
-        <div style={css.eyebrow}>Let’s get started</div>
+        <div style={css.eyebrow}>Let's get started</div>
         <h2 style={{ ...css.h2, marginTop: 10, fontSize: isMobile ? 30 : 52 }}>First, who are we fitting?</h2>
         <p style={css.hint}>
-          We’ll send your match so you can refer back to it anytime — and so a ZipFit bootfitter can follow up if you want help dialing in the fit.
+          We'll send your match so you can refer back to it anytime — and so a ZipFit bootfitter can follow up if you want help dialing in the fit.
         </p>
 
         <div style={{ marginTop: 26, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 560 }}>
@@ -1623,7 +1623,7 @@
               required={emailReq}
               style={inputStyle(emailFieldError)}
             />
-            {!emailValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid email.</span>}
+            {!emailValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn't look like a valid email.</span>}
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1651,7 +1651,7 @@
                 style={inputStyle(phoneFieldError)}
               />
             </div>
-            {!phoneValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn’t look like a valid phone number.</span>}
+            {!phoneValid && <span style={{ fontSize: 12, color: '#C73327' }}>That doesn't look like a valid phone number.</span>}
           </label>
 
           {/* Required: consent to store the quiz data and email the result. */}
