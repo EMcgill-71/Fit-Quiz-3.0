@@ -144,13 +144,21 @@
       .replace(/\bDual\s+BOA\b/gi, '')
       .replace(/\bBOA\b/gi, '')
       .replace(/\b(LV|MV|HV)\b/gi, '')
-      .replace(/\b\d{2,3}\b/g, '')
+      .replace(/\b\d{2,3}\b/g, '')           // flex/width numbers
+      .replace(/\bSki\s+Boots?\b\s*\d*/gi, '') // "Ski Boots 2025" noise
+      .replace(/[®™’’’]/g, ‘’)      // trademark / smart-quote symbols
+      .replace(/\(\s*\)/g, ‘’)                // empty parens "()"
+      .replace(/\b([A-Z])\.([A-Z])\./gi, ‘$1$2’) // dotted abbrevs: I.R. → IR, T.I. → TI
+      .replace(/\s\.\s/g, ‘ ‘)               // " . " spacing noise → space
+      .replace(/,/g, ‘.’)                     // commas → periods (Ten,2 → Ten.2)
+      .replace(/\s\/\s/g, ‘ ‘)                // " / " separator → space
+      .replace(/(^|\s)\/+/g, ‘ ‘)             // leading/mid standalone slashes
       .replace(/\s{2,}/g, ' ')
       .trim() || name;
-    // Title-case each word; preserve 2-3 char all-alpha uppercase abbreviations (XTD, TI, NTN…)
-    return stripped.replace(/\b([A-Za-z\d/]+)\b/g, (w) => {
-      if (/^[A-Z]{2,3}$/.test(w)) return w;   // preserve XTD, TI, etc.
-      if (/\d/.test(w)) return w;              // preserve alphanumeric tokens as-is
+    // Title-case; preserve 2-3 char all-alpha uppercase abbreviations (XTD, TI, NTN, IR…)
+    return stripped.replace(/\b([A-Za-z\d/.]+)\b/g, (w) => {
+      if (/^[A-Z]{2,4}$/.test(w)) return w;
+      if (/\d/.test(w)) return w;
       return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
     });
   }
