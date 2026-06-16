@@ -198,7 +198,7 @@ function scoreLiners(){
     if(l.id==='corsa'){if(last===0||last>94)return{l:l,s:-999};if(isTourPrimary)s-=80;s+=100;}
     // Espresso: ultralight LV touring — only when touring is primary use
     if(l.id==='espresso'){
-      var isUL=isTourPrimary&&last>0&&last<=98&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
+      var isUL=isTourPrimary&&last>0&&last<=100&&(vol==='LV'||vol==='Race/LV'||vol==='Race');
       if(!isUL)return{l:l,s:-999};s+=92;
     }
     // GFT: 96mm DH or strong boost when touring is primary use
