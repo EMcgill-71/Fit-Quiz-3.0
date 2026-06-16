@@ -137,15 +137,28 @@
   // volume codes (LV/MV/HV), BOA closures (BOA, Dual BOA), and 2-3 digit
   // flex/width numbers. Structural words like XTD, Carbon, Pro, Tour, Race,
   // Free, etc. stay so genuinely different product lines remain distinct.
+  // Title-cased for consistent display (2-3 char all-caps abbreviations kept).
   function familyOf(boot) {
     const name = typeof boot === 'string' ? boot : (boot.fam || boot.m || '');
-    return name
-      .replace(/\bDual\s+BOA\b/gi, '')      // "Dual BOA" → gone
-      .replace(/\bBOA\b/gi, '')              // lone "BOA" → gone
-      .replace(/\b(LV|MV|HV)\b/gi, '')      // volume codes → gone
-      .replace(/\b\d{2,3}\b/g, '')           // 2-3 digit numbers (flex, width) → gone
-      .replace(/\s{2,}/g, ' ')               // collapse whitespace
+    const stripped = name
+      .replace(/\bDual\s+BOA\b/gi, '')
+      .replace(/\bBOA\b/gi, '')
+      .replace(/\b(LV|MV|HV)\b/gi, '')
+      .replace(/\b\d{2,3}\b/g, '')
+      .replace(/\s{2,}/g, ' ')
       .trim() || name;
+    // Title-case each word; preserve 2-3 char all-alpha uppercase abbreviations (XTD, TI, NTN…)
+    return stripped.replace(/\b([A-Za-z\d/]+)\b/g, (w) => {
+      if (/^[A-Z]{2,3}$/.test(w)) return w;   // preserve XTD, TI, etc.
+      if (/\d/.test(w)) return w;              // preserve alphanumeric tokens as-is
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    });
+  }
+
+  // Normalised dedup key — strips spaces and lowercases so that
+  // "MACH SPORT" == "Mach Sport", "K100 P" == "K100P", "3DWrap" == "3D Wrap"
+  function famKey(brand, fam) {
+    return brand + '::' + fam.toLowerCase().replace(/\s+/g, '');
   }
 
   function BootPicker({ value, onChange }) {
@@ -170,8 +183,13 @@
       const map = {};
       list.forEach((b) => {
         const fam = familyOf(b);
-        const key = b.b + '::' + fam;
+        const key = famKey(b.b, fam);
         if (!map[key]) map[key] = { b: b.b, fam, flexes: {}, volumes: {}, lasts: {}, walk: false };
+        // Prefer the more title-cased display name when merging duplicates
+        else {
+          const titleScore = (s) => s.split(/\s+/).filter((w) => /^[A-Z][a-z]/.test(w)).length;
+          if (titleScore(fam) > titleScore(map[key].fam)) map[key].fam = fam;
+        }
         if (b.f) map[key].flexes[b.f] = 1;
         if (b.v && b.v !== 'nan') map[key].volumes[b.v] = 1;
         if (b.l) map[key].lasts[b.l] = 1;
@@ -191,14 +209,17 @@
 
     // Selected boot confirmation card (computed below all hooks; render decision lives near return)
 
-    // Family options for the Model dropdown — derived directly from BOOTS so
-    // models without a flex number in their name (touring boots, race series,
-    // etc.) still appear. BFM is keyed by flex and would silently drop those.
+    // Family options for the Model dropdown — same dedup logic as the families list.
     const familyOptions = useMemo(() => {
       if (!pBrand) return [];
-      const set = {};
-      window.BOOTS.forEach((b) => { if (b.b === pBrand) set[familyOf(b)] = 1; });
-      let list = Object.keys(set);
+      const seen = {};
+      window.BOOTS.forEach((b) => {
+        if (b.b !== pBrand) return;
+        const fam = familyOf(b);
+        const key = famKey(pBrand, fam);
+        if (!seen[key]) seen[key] = fam;
+      });
+      let list = Object.values(seen);
       if (ql) list = list.filter((fam) => `${pBrand} ${fam}`.toLowerCase().includes(ql));
       return list.sort();
     }, [pBrand, ql]);
@@ -213,7 +234,7 @@
     // `families` list) so the flex chips still show even if the user's query
     // would have hidden this family from the row list.
     const familyVariants = (pFamily && pBrand)
-      ? window.BOOTS.filter((b) => b.b === pBrand && familyOf(b) === pFamily)
+      ? window.BOOTS.filter((b) => b.b === pBrand && famKey(b.b, familyOf(b)) === famKey(pBrand, pFamily))
       : [];
     const flexesForFamily = (() => {
       const seen = {};
