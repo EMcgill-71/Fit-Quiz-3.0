@@ -15,7 +15,7 @@ var LINERS=[
   {id:'corsa',name:'Corsa',tag:'Race-only precision. Exclusively for race and ultra-low-volume shells demanding maximum control.',w:2,p:5,vol:'Low',vols:['LV','Race','Race/LV'],issues:['control','heel'],ins:['low','medium'],ank:['low','medium'],cal:['low','medium'],feat:['Cork fill system','Race-specific construction','Maximum energy transfer','Precision narrow last'],why:"The Corsa is built exclusively for race and ultra-low-volume shells. The cork fill system locks your heel down and eliminates dead space for total power transfer. If you are in a race shell, this is your liner."},
   {id:'gft',name:'GFT',tag:'The precision all-rounder. Built for low-volume downhill, touring, and crossover shells.',w:3,p:4,vol:'Medium',vols:['MV','LV','MV-Wide'],issues:['heel','control'],ins:['low','medium','high'],ank:['low','medium','high'],cal:['low','medium'],feat:['Cork fill system','All-mountain performance','Balanced volume','Versatile fit'],why:"The GFT is the go-to ZipFit liner for low-volume downhill shells, touring boots, and crossover shells. The cork fill system delivers a precise custom fit that transforms energy transfer and heel hold whether you are carving on the resort or skinning into the backcountry."},
   {id:'espresso',name:'Espresso',tag:'Ultralight LV touring precision. Built for the lightest, most dedicated AT shells.',w:2,p:4,vol:'Low-Medium',vols:['LV','Race/LV'],issues:['heel','control'],ins:['low','medium'],ank:['low','medium'],cal:['low','medium'],feat:['Cork fill system','Ultralight touring construction','LV precision fit','Uphill and downhill performance'],why:"The Espresso is ZipFit's ultralight LV touring liner, built specifically for dedicated low-volume AT shells. The cork fill system delivers a locked-in, responsive fit that performs on the descent without weighing you down on the ascent."},
-  {id:'gara_lv',name:'Gara LV',tag:'Warm performance for low-volume shells. For lean to average calves with lean/bony ankles who need warmth.',w:4,p:4,vol:'Low-Medium',vols:['LV','Race','Race/LV'],issues:['cold','heel','control'],ins:['low','medium'],ank:['low','medium'],cal:['low','medium'],feat:['Cork fill system','Enhanced insulation','Low-volume shell fit','Cold-weather performance'],why:"The Gara LV brings serious warmth to skiers in low-volume shells with lean to average calf volume. If cold feet have been holding you back, the Gara LV delivers cork precision and real insulation without compromising the locked-in fit you need for performance skiing."},
+  {id:'gara_lv',name:'Gara LV',tag:'Warm performance for low-volume shells. For lean to average calves with lean/bony ankles who need warmth.',w:4,p:4,vol:'Low-Medium',vols:['LV','Race','Race/LV'],issues:['cold','heel','control'],ins:['low','medium'],ank:['low','medium'],cal:['low','medium','high'],feat:['Cork fill system','Enhanced insulation','Low-volume shell fit','Cold-weather performance'],why:"The Gara LV brings serious warmth to skiers in low-volume shells with lean to average calf volume. If cold feet have been holding you back, the Gara LV delivers cork precision and real insulation without compromising the locked-in fit you need for performance skiing."},
   {id:'gara_hv',name:'Gara HV',tag:'Maximum cork fill for larger shells. Best-in-class volume reduction and heel lock for lean ankles in high-volume boots.',w:4,p:4,vol:'Medium-High',vols:['HV','MV','MV-Wide'],issues:['heel','control'],ins:['medium','high'],ank:['medium','high'],cal:['low','medium','high'],feat:['Maximum cork fill','Best-in-class volume reduction','Precision heel lock','Higher-volume shell fit'],why:"The Gara HV is ZipFit's maximum cork fill liner, built to deliver the greatest volume reduction available in a higher-volume shell. If you have lean or narrow ankles and find yourself with dead space in a larger boot, the Gara HV fills precisely where you need it most. The result is an exceptional heel lock and a connected, responsive feel that makes a bigger shell perform like it was built for your foot."},
   {id:'freeride',name:'Freeride',tag:'The all-mountain comfort liner. Built for higher-volume shells and fuller lower legs.',w:4,p:3,vol:'Medium-High',vols:['HV','MV','MV-Wide'],issues:['cold','heel'],ins:['medium','high'],ank:['medium','high'],cal:['medium','high'],feat:['Cork fill system','Fuller calf fit','Higher-volume shell fit','Great for all levels'],why:"The Freeride is the go-to liner for skiers in higher-volume shells who have a fuller or muscular lower leg. The higher-volume construction accommodates larger calf volume that other liners can struggle with, while the cork fill system still delivers a custom fit. A great choice for skiers of any level who want a comfortable, custom fit in a higher-volume shell."},
   {id:'workhorse',name:'Workhorse',tag:'Maximum warmth for higher-volume shells. Built for experts who live in their boots.',w:5,p:4,vol:'High',vols:['HV','MV','MV-Wide'],issues:['cold','pain'],ins:['high'],ank:['high'],cal:['high'],feat:['Cork fill system','Maximum insulation','Expert-level performance','All-day warmth'],why:"The Workhorse is ZipFit's warmest US liner, built for expert skiers and boot industry professionals who spend their days on snow in higher-volume shells. Maximum insulation keeps you warm on the coldest days while the cork fill system ensures you never sacrifice performance for warmth."}
@@ -207,24 +207,21 @@ function scoreLiners(){
       if(boot.w)s+=50;
       if(isTourPrimary&&last>98)s+=70;
     }
-    // Gara LV: 96-100mm, lean/avg calf — penalty when touring is primary use
-    // Full/fleshy ankle → LV (natural tissue already fills the shell; LV liner fits precisely)
-    // Flat arch + lean ankle together → HV (compound signal overrides; lean alone → mild LV pull)
+    // Gara LV: 96-100mm — penalty when touring is primary use or muscular calf
     if(l.id==='gara_lv'){
       if(last===0||last<96||last>100)return{l:l,s:-999};
       if(isTourPrimary)s-=80;
-      if(ans.cal==='high')return{l:l,s:-999};
+      if(ans.cal==='high')s-=50;
       s+=95;
       if(ans.ank==='high')s+=30;
       else if(ans.ank==='low'&&ans.ins==='low')s-=30;
       else if(ans.ank==='low')s+=15;
     }
-    // Gara HV: 100-104mm, lean/avg calf — penalty when touring is primary use
-    // Full/fleshy ankle → not HV (adding liner bulk over existing tissue overfills the shell)
-    // Flat arch + lean ankle → HV (dead space from both signals; liner fill is needed)
+    // Gara HV: 100-104mm — penalty when touring is primary use or muscular calf
     if(l.id==='gara_hv'){
       if(last===0||last<100||last>104)return{l:l,s:-999};
       if(isTourPrimary)s-=80;
+      if(ans.cal==='high')s-=50;
       s+=95;
       if(ans.ank==='high')s-=30;
       else if(ans.ank==='low'&&ans.ins==='low')s+=30;
