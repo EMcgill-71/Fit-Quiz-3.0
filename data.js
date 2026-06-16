@@ -231,19 +231,19 @@ function scoreLiners(){
       else if(ans.ank==='low'&&ans.ins==='low')s+=30;
       else if(ans.ank==='low')s-=10;
     }
-    // Freeride: 100-106mm, +30 large calf, +25 walk mode, +20 park terrain, +12 touring primary
+    // Freeride: 100-106mm, +50 muscular calf, +25 walk mode, +20 park terrain, +12 touring primary
     if(l.id==='freeride'){
       if(last>0&&(last<100||last>106))return{l:l,s:-999};
       s+=70;
-      if(ans.cal==='high')s+=30;
+      if(ans.cal==='high')s+=50;
       if(boot.w)s+=25;
       if(terrainArr.indexOf('park')>-1)s+=20;
       if(isTourPrimary)s+=12;
     }
-    // Workhorse: 100-106mm, expert only
+    // Workhorse: 100-106mm, advanced and expert only (ability >= 3)
     if(l.id==='workhorse'){
       if(last>0&&(last<100||last>106))return{l:l,s:-999};
-      if(!ans.ability||ans.ability<4)return{l:l,s:-999};
+      if(!ans.ability||ans.ability<3)return{l:l,s:-999};
       s+=70;
     }
     // TIER 2 — SHELL VOLUME MATCH (secondary ~30pts)
