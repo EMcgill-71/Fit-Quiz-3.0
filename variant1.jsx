@@ -1416,8 +1416,12 @@
           <div style={revealStyle(400)}>
             <div style={{
               background: linerColor, color: '#fff',
-              borderRadius: 12, padding: '18px 22px',
+              borderRadius: 0,
+              padding: '28px 30px 32px',
               position: 'relative', overflow: 'hidden',
+              marginLeft: isMobile ? -16 : -36,
+              marginRight: isMobile ? -16 : -36,
+              marginBottom: isMobile ? -24 : -18,
             }}>
               <div aria-hidden style={{
                 position: 'absolute', right: -40, bottom: -40,
