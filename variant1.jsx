@@ -957,7 +957,7 @@
         {/* header */}
         <div style={{ padding: isMobile ? '14px 16px 12px' : '20px 30px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(39,39,39,.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="assets/logo-black.png" alt="ZipFit" style={{ height: 20 }} />
+            <img src="assets/logo.svg" alt="ZipFit" style={{ height: 20, width: 'auto' }} />
             <span style={{ ...css.eyebrow, fontSize: 11 }}>· Find my fit</span>
           </div>
           {step > 0 && step < STAGES.length - 1 && (
