@@ -1376,28 +1376,6 @@
         </div>
 
 
-        {linerSize != null && (
-          <div style={revealStyle(80)}>
-            <Section title="Suggested sizing" accent={linerColor}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 6 }}>
-                {footMondo != null && <Stat l="Foot length" v={`${footCm} cm`} bg={wash} />}
-                {shellSz != null && <Stat l="Your shell size" v={`Mondo ${shellSz.toFixed(1)}`} bg={wash} />}
-                <Stat l={`${top.name} size`} v={`Mondo ${linerSize.toFixed(1)}`} bg={wash} />
-              </div>
-              <p style={{ fontSize: 13, color: '#7A7670', margin: '10px 0 0', lineHeight: 1.45 }}>
-                {shellSz != null
-                  ? <>Your liner needs to fill your shell, so we size the <strong style={{ color: BLACK }}>{top.name}</strong> to your shell&#39;s mondo size.</>
-                  : <>Based on your foot measurement. If you know your shell&#39;s mondo size, match the liner to the shell — it needs to fill the shell.</>}
-                {sizeDelta != null && sizeDelta >= 1 && (
-                  <> Your shell runs about <strong style={{ color: BLACK }}>{sizeDelta.toFixed(1)} sizes larger</strong> than your foot — the {top.name}&#39;s cork fill will take up that extra volume.</>
-                )}
-                {sizeDelta != null && sizeDelta <= -0.5 && (
-                  <> Heads up: your shell is <strong style={{ color: BLACK }}>smaller than your foot measurement</strong> — worth confirming the shell size with your bootfitter.</>
-                )}
-              </p>
-            </Section>
-          </div>
-        )}
 
         {/* Foot profile */}
         {footProfile.length > 0 && (
