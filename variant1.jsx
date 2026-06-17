@@ -1151,10 +1151,10 @@
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 520, justifyContent: 'space-between' }}>
         <div>
           <div style={css.eyebrow}>Custom liners · Made in Italy · Since 1989</div>
-          <h1 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', lineHeight: .88, letterSpacing: '-.032em', margin: '20px 0 24px' }}>
-            <span style={{ display: 'block', fontSize: isMobile ? 28 : 46, fontWeight: 700, letterSpacing: '-.014em', color: '#4A4A4A', marginBottom: 4 }}>Find your</span>
-            <span style={{ ...rainbowText, display: 'block', fontSize: isMobile ? 88 : 168, lineHeight: .82 }}>ZipFit.</span>
-          </h1>
+          <div style={{ margin: '20px 0 24px' }}>
+            <div style={{ fontSize: isMobile ? 28 : 46, fontWeight: 700, letterSpacing: '-.014em', color: '#4A4A4A', marginBottom: 10 }}>Find your</div>
+            <img src="assets/logo.svg" alt="ZipFit" style={{ height: isMobile ? 72 : 120, width: 'auto', display: 'block' }} />
+          </div>
           <p style={{ fontSize: 19, lineHeight: 1.45, color: '#4A4A4A', maxWidth: 600, margin: 0, textWrap: 'pretty' }}>
             Six questions about your shell, foot shape, and how you ski. We match you to one of seven ZipFits — handmade in Italy.
           </p>
