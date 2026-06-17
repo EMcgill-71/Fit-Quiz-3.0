@@ -5,7 +5,7 @@
  */
 
 /* ---- GILROY SUBSTITUTE + INTER (website) ---- */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
   /* ====== BRAND COLORS ====== */
@@ -59,7 +59,7 @@
 
   /* ====== TYPE FAMILIES ====== */
   /* Brand display (Gilroy substitute) */
-  --font-display: 'Outfit', 'Gilroy', system-ui, -apple-system, sans-serif;
+    --font-display: 'Inter', system-ui, -apple-system, sans-serif;
   /* Website body / UI */
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   /* Mono — for specs / technical callouts */
