@@ -1181,6 +1181,9 @@
     if (!top) return <div>Hmm, no match found. Try adjusting your answers.</div>;
     const alts = match.alternates;
     const linerColor = window.LINER_COLOR[top.id] || RED;
+    // Combo-aware recommendation text: prefer a pairing-specific blurb over the generic why.
+    const comboKey = alts && alts.length > 0 ? `${top.id}::${alts[0].id}` : top.id;
+    const whyText = (window.COMBO_WHY && (window.COMBO_WHY[comboKey] || window.COMBO_WHY[top.id])) || top.why;
     const boot = answers.boot || {};
     // Multi-select fit problems → array of FIT_PROBLEMS entries (excluding 'none').
     const fitProblemVals = Array.isArray(answers.fit_problem)
@@ -1434,7 +1437,7 @@
         {/* Why */}
         <div style={revealStyle(260)}>
           <Section title="Why this liner for you" accent={linerColor}>
-            <p style={{ fontSize: 16, lineHeight: 1.55, color: BLACK, margin: 0, textWrap: 'pretty' }}>{top.why}</p>
+            <p style={{ fontSize: 16, lineHeight: 1.55, color: BLACK, margin: 0, textWrap: 'pretty' }}>{whyText}</p>
           </Section>
         </div>
 
