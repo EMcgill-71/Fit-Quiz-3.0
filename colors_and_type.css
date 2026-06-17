@@ -1,10 +1,14 @@
 /* ZipFit Design System — Core tokens
  * Source: Zipfit Brand Standards FINAL + zipfit.com
- * Primary typeface: Gilroy (substituted with Google Fonts "Outfit" for web availability — see README)
- * Website body/UI font: Inter (per user note)
+ * Primary typeface: Gilroy (ZipFit brand font)
+ * Website body/UI font: Inter (fallback)
  */
 
-/* ---- GILROY SUBSTITUTE + INTER (website) ---- */
+/* ---- GILROY (brand typeface) ---- */
+@import url('https://fonts.cdnfonts.com/css/gilroy-free');
+/* ---- OUTFIT (geometric fallback for mid-weights 400–700 not in Gilroy Free) ---- */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* ---- INTER (body/UI fallback) ---- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
@@ -58,10 +62,10 @@
   --focus-ring: rgba(239,70,35,0.35);
 
   /* ====== TYPE FAMILIES ====== */
-  /* Brand display (Gilroy substitute) */
-    --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Brand display — Gilroy is the ZipFit typeface */
+  --font-display: 'Gilroy', 'Outfit', system-ui, -apple-system, sans-serif;
   /* Website body / UI */
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Gilroy', 'Inter', system-ui, -apple-system, sans-serif;
   /* Mono — for specs / technical callouts */
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 

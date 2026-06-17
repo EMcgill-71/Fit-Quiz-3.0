@@ -3,7 +3,7 @@
    PRESERVES: the full 7-question flow from the original quiz (boot → forefoot →
    instep → ankle → calf → fit problem → ability) and the original tier-based
    scoring via window.computeMatch. Only the presentation changes.
-   Aesthetic: white canvas, big Outfit display type, illustrated SVG cards.
+   Aesthetic: white canvas, big Gilroy display type, illustrated SVG cards.
 */
 (function () {
   const { useState, useMemo, useEffect } = React;
@@ -95,20 +95,20 @@
     WebkitTextFillColor: 'transparent',
   };
   const css = {
-    eyebrow: { fontSize: 12, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase', color: '#7A7670', fontFamily: 'Inter, sans-serif' },
-    h2: { fontFamily: 'Outfit, sans-serif', fontWeight: 800, textTransform: 'uppercase', fontSize: 52, letterSpacing: '-.022em', lineHeight: 1.0, color: BLACK, margin: 0, textWrap: 'balance' },
-    hint: { fontFamily: 'Inter, sans-serif', fontSize: 17, lineHeight: 1.5, color: '#4A4A4A', margin: '12px 0 0', maxWidth: 620, textWrap: 'pretty' },
-    sub: { fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.4, color: '#7A7670', margin: '12px 0 0', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: WARM, borderRadius: 6 },
+    eyebrow: { fontSize: 12, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase', color: '#7A7670', fontFamily: 'Gilroy, Inter, sans-serif' },
+    h2: { fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 800, textTransform: 'uppercase', fontSize: 52, letterSpacing: '-.022em', lineHeight: 1.0, color: BLACK, margin: 0, textWrap: 'balance' },
+    hint: { fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 17, lineHeight: 1.5, color: '#4A4A4A', margin: '12px 0 0', maxWidth: 620, textWrap: 'pretty' },
+    sub: { fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 13, lineHeight: 1.4, color: '#7A7670', margin: '12px 0 0', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: WARM, borderRadius: 6 },
   };
   const btnPrimary = (disabled) => ({
     background: disabled ? 'rgba(39,39,39,.12)' : RED, color: '#fff',
     border: 0, borderRadius: 4, padding: '14px 26px',
-    fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em',
+    fontFamily: 'Gilroy, Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em',
     textTransform: 'uppercase', cursor: disabled ? 'not-allowed' : 'pointer',
   });
   const btnGhost = {
     background: 'transparent', color: BLACK, border: 0, padding: '14px 6px',
-    fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em',
+    fontFamily: 'Gilroy, Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em',
     textTransform: 'uppercase', cursor: 'pointer',
   };
 
@@ -288,11 +288,11 @@
               <div style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ ...rainbowText }}>✓</span> Shell confirmed
               </div>
-              <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 800, fontSize: 26, lineHeight: 1.12, letterSpacing: '-.014em', marginTop: 8, textWrap: 'balance', color: BLACK }}>{value.m}</div>
+              <div style={{ fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 800, fontSize: 26, lineHeight: 1.12, letterSpacing: '-.014em', marginTop: 8, textWrap: 'balance', color: BLACK }}>{value.m}</div>
               <div style={{ fontSize: 14, color: '#7A7670', marginTop: 8 }}>{value.b} · {value.y}{value.w ? ' · Walk mode' : ''}</div>
             </div>
             <button onClick={() => { setPBrand(''); setPFamily(''); setPFlex(''); setQuery(''); onChange(null); }}
-              style={{ background: 'transparent', border: '1px solid rgba(39,39,39,.18)', color: '#7A7670', padding: '6px 12px', borderRadius: 4, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>
+              style={{ background: 'transparent', border: '1px solid rgba(39,39,39,.18)', color: '#7A7670', padding: '6px 12px', borderRadius: 4, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Gilroy, Inter, sans-serif', flexShrink: 0 }}>
               Change
             </button>
           </div>
@@ -321,7 +321,7 @@
                   style={{
                     width: '100%', padding: '10px 12px',
                     border: '1.5px solid rgba(39,39,39,.18)', borderRadius: 6,
-                    fontFamily: 'Inter, sans-serif', fontSize: 14, color: value.sz ? BLACK : '#7A7670',
+                    fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 14, color: value.sz ? BLACK : '#7A7670',
                     background: '#fff', outline: 'none', cursor: 'pointer',
                   }}
                 >
@@ -358,7 +358,7 @@
               background: '#fff',
               border: `1.5px solid ${query ? BLACK : 'rgba(39,39,39,.16)'}`,
               borderRadius: 8,
-              fontFamily: 'Inter, sans-serif', fontSize: 16, color: BLACK,
+              fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 16, color: BLACK,
               outline: 'none',
               boxSizing: 'border-box',
             }}
@@ -388,7 +388,7 @@
                       background: active ? BLACK : '#fff',
                       color: active ? '#fff' : BLACK,
                       border: `1.5px solid ${active ? BLACK : 'rgba(39,39,39,.18)'}`,
-                      fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                      fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                     }}>
                     {f}
                   </button>
@@ -432,7 +432,7 @@
                           background: 'transparent', border: 0,
                           borderBottom: '1px solid rgba(39,39,39,.06)',
                           textAlign: 'left', cursor: 'pointer',
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'Gilroy, Inter, sans-serif',
                           transition: 'background .12s',
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = WARM; }}
@@ -475,7 +475,7 @@
                       background: isActive ? WARM : 'transparent', border: 0,
                       borderBottom: '1px solid rgba(39,39,39,.06)',
                       textAlign: 'left', cursor: 'pointer',
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'Gilroy, Inter, sans-serif',
                       transition: 'background .12s',
                     }}
                     onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = WARM; }}
@@ -508,7 +508,7 @@
           {accent && <span style={{ width: 10, height: 10, borderRadius: 2, background: accent, flexShrink: 0 }} />}
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#7A7670' }}>{label}</div>
         </div>
-        <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: 24, marginTop: 6, color: BLACK }}>{value}</div>
+        <div style={{ fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 700, fontSize: 24, marginTop: 6, color: BLACK }}>{value}</div>
         {note && <div style={{ fontSize: 11.5, color: '#a8a39d', marginTop: 3 }}>{note}</div>}
       </div>
     );
@@ -528,7 +528,7 @@
               background: disabled ? 'rgba(39,39,39,.04)' : '#fff',
               color: disabled ? '#bbb' : BLACK,
               border: '1.5px solid rgba(39,39,39,.12)', borderRadius: 8,
-              fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 500,
+              fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 15, fontWeight: 500,
               cursor: disabled ? 'not-allowed' : 'pointer',
             }}>
             <option value="">{placeholder}</option>
@@ -711,7 +711,7 @@
         borderRadius: 12, padding: '16px 10px 16px',
         cursor: 'pointer', display: 'flex', flexDirection: 'column',
         alignItems: 'center', gap: 8,
-        fontFamily: 'Inter, sans-serif', transition: 'all .14s',
+        fontFamily: 'Gilroy, Inter, sans-serif', transition: 'all .14s',
         textAlign: 'center', minHeight: cols === 4 ? 168 : 184,
       }}>
         <div style={{
@@ -758,7 +758,7 @@
         border: `1.5px solid ${active ? BLACK : 'rgba(39,39,39,.12)'}`,
         borderRadius: 12, padding: '16px 18px',
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 18,
-        fontFamily: 'Inter, sans-serif', textAlign: 'left', width: '100%',
+        fontFamily: 'Gilroy, Inter, sans-serif', textAlign: 'left', width: '100%',
         transition: 'all .14s',
       }}>
         <div style={{
@@ -793,7 +793,7 @@
             return (
               <div key={s} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'Gilroy, Inter, sans-serif',
                   fontSize: 11, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase',
                   color: isActive ? BLACK : passed ? '#7A7670' : 'rgba(39,39,39,.28)',
                 }}>{s}</span>
@@ -955,7 +955,7 @@
     const restart = () => { setAnswers({}); setStep(0); };
 
     return (
-      <div style={{ width: '100%', height: '100%', background: '#fff', color: BLACK, fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ width: '100%', height: '100%', background: '#fff', color: BLACK, fontFamily: 'Gilroy, Inter, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* header */}
         <div style={{ padding: isMobile ? '14px 16px 12px' : '20px 30px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(39,39,39,.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1007,7 +1007,7 @@
                           padding: '16px 14px',
                           border: `1.5px solid ${answers[q.id] !== undefined ? BLACK : 'rgba(39,39,39,.22)'}`,
                           borderRadius: 8,
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'Gilroy, Inter, sans-serif',
                           fontSize: 28,
                           fontWeight: 700,
                           color: BLACK,
@@ -1017,7 +1017,7 @@
                           MozAppearance: 'textfield',
                         }}
                       />
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 20, fontWeight: 600, color: '#7A7670' }}>cm</span>
+                      <span style={{ fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 20, fontWeight: 600, color: '#7A7670' }}>cm</span>
                     </div>
                     {answers[q.id] !== undefined && (
                       <div style={{ marginTop: 12, fontSize: 14, color: '#7A7670' }}>
@@ -1042,7 +1042,7 @@
                     {q.subs.map((sub, si) => (
                       <div key={sub.id}>
                         <div style={{
-                          fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600,
+                          fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 15, fontWeight: 600,
                           color: BLACK, marginBottom: 10, display: 'flex', alignItems: 'baseline', gap: 8,
                         }}>
                           <span style={{ ...css.eyebrow, fontSize: 11, color: '#7A7670' }}>{String.fromCharCode(65 + si)}</span>
@@ -1128,7 +1128,7 @@
 
           {stage === 'result' && loadingResult && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#7A7670' }}>Loading your results…</span>
+              <span style={{ fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 15, color: '#7A7670' }}>Loading your results…</span>
             </div>
           )}
           {stage === 'result' && !loadingResult && <Result answers={answers} onRestart={restart} onBack={back} />}
@@ -1156,6 +1156,7 @@
           <div style={{ margin: '20px 0 24px' }}>
             <div style={{ fontSize: isMobile ? 28 : 46, fontWeight: 700, letterSpacing: '-.014em', color: '#4A4A4A', marginBottom: 10 }}>Find your</div>
             <img src="assets/logo.svg" alt="ZipFit" style={{ height: isMobile ? 72 : 120, width: 'auto', display: 'block' }} />
+            <div style={{ fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 800, fontSize: isMobile ? 16 : 19, letterSpacing: '.04em', color: RED, marginTop: 10, textTransform: 'uppercase' }}>We Know Feet.</div>
           </div>
           <p style={{ fontSize: 19, lineHeight: 1.45, color: '#4A4A4A', maxWidth: 600, margin: 0, textWrap: 'pretty' }}>
             Six questions about your shell, foot shape, and how you ski. We match you to one of seven ZipFits — handmade in Italy.
@@ -1275,7 +1276,7 @@
           <div style={{ ...css.eyebrow, fontSize: 12, color: linerColor, fontWeight: 800 }}>
             ✓ Our best match
           </div>
-          <h1 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', fontSize: isMobile ? 42 : 64, lineHeight: .92, letterSpacing: '-.03em', margin: '10px 0 8px', color: BLACK }}>
+          <h1 style={{ fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', fontSize: isMobile ? 42 : 64, lineHeight: .92, letterSpacing: '-.03em', margin: '10px 0 8px', color: BLACK }}>
             The <span style={{ color: linerColor }}>{top.name}</span>.
           </h1>
           <p style={{ fontSize: 16, color: '#4A4A4A', margin: '0 0 16px', fontStyle: 'italic', lineHeight: 1.4, textWrap: 'balance', maxWidth: 600 }}>{top.tag}</p>
@@ -1293,7 +1294,7 @@
             <div aria-hidden style={{
               position: 'absolute', inset: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Outfit, sans-serif', fontWeight: 900,
+              fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 900,
               fontSize: 180, lineHeight: 1, letterSpacing: '-.04em',
               color: linerColor, opacity: 0.10,
               textTransform: 'uppercase', pointerEvents: 'none',
@@ -1304,7 +1305,7 @@
                 display: 'inline-block', marginBottom: 10,
                 padding: '6px 14px', borderRadius: 999,
                 background: linerColor, color: '#fff',
-                fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700,
+                fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 13, fontWeight: 700,
                 letterSpacing: '.04em', position: 'relative',
               }}>
                 Suggested size · Mondo {linerSize.toFixed(1)}
@@ -1335,7 +1336,7 @@
               <div style={{ ...css.eyebrow, fontSize: 11, color: 'rgba(255,255,255,.7)', fontWeight: 800 }}>
                 ✓ Best match on its way
               </div>
-              <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 800, textTransform: 'uppercase', fontSize: 26, letterSpacing: '-.014em', lineHeight: 1.05, margin: '8px 0 6px', textWrap: 'balance' }}>
+              <div style={{ fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 800, textTransform: 'uppercase', fontSize: 26, letterSpacing: '-.014em', lineHeight: 1.05, margin: '8px 0 6px', textWrap: 'balance' }}>
                 Thanks{answers.lead.name ? ', ' + answers.lead.name : ''}.
               </div>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', margin: 0, lineHeight: 1.5, maxWidth: 520 }}>
@@ -1365,7 +1366,7 @@
               width: '100%', boxSizing: 'border-box',
               background: linerColor, borderColor: linerColor,
               color: '#fff', textDecoration: 'none', textAlign: 'center',
-              fontFamily: 'Inter, sans-serif', fontWeight: 700,
+              fontFamily: 'Gilroy, Inter, sans-serif', fontWeight: 700,
               fontSize: 16, letterSpacing: '.06em', textTransform: 'uppercase',
               borderRadius: 6, padding: '18px 24px',
               boxShadow: `0 6px 24px ${linerColor}66`,
@@ -1467,7 +1468,7 @@
               background: '#fff', color: BLACK,
               border: `2px solid rgba(39,39,39,.35)`,
               textDecoration: 'none', textAlign: 'center',
-              fontFamily: 'Inter, sans-serif', fontWeight: 700,
+              fontFamily: 'Gilroy, Inter, sans-serif', fontWeight: 700,
               fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
               borderRadius: 6, padding: '15px 24px',
               boxShadow: '0 2px 8px rgba(0,0,0,.08)',
@@ -1480,9 +1481,9 @@
           </a>
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             {onBack && (
-              <button onClick={onBack} style={{ flex: 1, background: '#fff', color: BLACK, border: `2px solid rgba(39,39,39,.28)`, borderRadius: 6, padding: '13px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.07)' }}>← Edit answers</button>
+              <button onClick={onBack} style={{ flex: 1, background: '#fff', color: BLACK, border: `2px solid rgba(39,39,39,.28)`, borderRadius: 6, padding: '13px 18px', fontFamily: 'Gilroy, Inter, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.07)' }}>← Edit answers</button>
             )}
-            <button onClick={onRestart} style={{ flex: 1, background: '#fff', color: BLACK, border: `2px solid rgba(39,39,39,.28)`, borderRadius: 6, padding: '13px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.07)' }}>↻ Retake</button>
+            <button onClick={onRestart} style={{ flex: 1, background: '#fff', color: BLACK, border: `2px solid rgba(39,39,39,.28)`, borderRadius: 6, padding: '13px 18px', fontFamily: 'Gilroy, Inter, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.07)' }}>↻ Retake</button>
           </div>
         </div>
         <p style={{ fontSize: 12, color: '#a8a39d', marginTop: 14, textAlign: 'center', lineHeight: 1.5, ...revealStyle(510) }}>
@@ -1731,7 +1732,7 @@
       background: '#fff',
       border: `1.5px solid ${hasError ? '#C73327' : 'rgba(39,39,39,.16)'}`,
       borderRadius: 8,
-      fontFamily: 'Inter, sans-serif', fontSize: 15, color: BLACK,
+      fontFamily: 'Gilroy, Inter, sans-serif', fontSize: 15, color: BLACK,
       outline: 'none',
     };
   }
