@@ -1158,9 +1158,9 @@
           <p style={{ fontSize: 19, lineHeight: 1.45, color: '#4A4A4A', maxWidth: 600, margin: 0, textWrap: 'pretty' }}>
             Six questions about your shell, foot shape, and how you ski. We match you to one of seven ZipFits — handmade in Italy.
           </p>
-          <div style={{ marginTop: 28, background: WARM, borderRadius: 10, padding: 18, display: 'flex', gap: 16, alignItems: 'center', maxWidth: 580 }}>
-            <img src="assets/lifestyle-liner.jpg" alt="" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-            <p style={{ fontSize: 15, lineHeight: 1.5, color: '#4A4A4A', margin: 0 }}>
+          <div style={{ marginTop: 28, background: WARM, borderRadius: 12, padding: isMobile ? 20 : 26, display: 'flex', gap: 20, alignItems: 'center', maxWidth: 620 }}>
+            <img src="assets/lifestyle-liner.jpg" alt="" style={{ width: isMobile ? 100 : 120, height: isMobile ? 100 : 120, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+            <p style={{ fontSize: isMobile ? 16 : 18, lineHeight: 1.5, color: '#4A4A4A', margin: 0 }}>
               Have a soft tape measure handy — we'll ask about your ankle and calf circumference.
             </p>
           </div>
