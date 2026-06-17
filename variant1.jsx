@@ -311,7 +311,9 @@
                 if (!isNaN(lo) && !isNaN(hi)) { minSz = lo; maxSz = hi; }
               }
               const steps = [];
-              for (let s = minSz; s <= maxSz + 0.01; s += 0.5) steps.push(s.toFixed(1));
+              // Only .5 sizes — e.g. 22.5, 23.5, 24.5 …
+              const startSz = Math.floor(minSz) + 0.5;
+              for (let s = startSz; s <= maxSz + 0.01; s += 1) steps.push(s.toFixed(1));
               return (
                 <select
                   value={value.sz || ''}
