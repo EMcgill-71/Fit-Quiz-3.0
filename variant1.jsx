@@ -1274,27 +1274,16 @@
           <h1 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, textTransform: 'uppercase', fontSize: isMobile ? 42 : 64, lineHeight: .92, letterSpacing: '-.03em', margin: '10px 0 8px', color: BLACK }}>
             The <span style={{ color: linerColor }}>{top.name}</span>.
           </h1>
-          {linerSize != null && (
-            <div style={{
-              display: 'inline-block', marginBottom: 10,
-              padding: '6px 14px', borderRadius: 999,
-              background: linerColor, color: '#fff',
-              fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700,
-              letterSpacing: '.04em',
-            }}>
-              Suggested size · Mondo {linerSize.toFixed(1)}
-            </div>
-          )}
           <p style={{ fontSize: 16, color: '#4A4A4A', margin: '0 0 16px', fontStyle: 'italic', lineHeight: 1.4, textWrap: 'balance', maxWidth: 600 }}>{top.tag}</p>
 
-          {/* Photo on a fuller wash — gives the product real stage presence */}
+          {/* Photo on a fuller wash — size suggestion overlaid at top */}
           <div style={{
             background: washStrong,
             borderRadius: 10,
             position: 'relative',
             overflow: 'hidden',
             textAlign: 'center',
-            padding: '20px 14px 12px',
+            padding: '12px 14px 12px',
           }}>
             {/* Big ghost wordmark behind the photo */}
             <div aria-hidden style={{
@@ -1306,13 +1295,87 @@
               textTransform: 'uppercase', pointerEvents: 'none',
               whiteSpace: 'nowrap',
             }}>{top.name}</div>
+            {linerSize != null && (
+              <div style={{
+                display: 'inline-block', marginBottom: 10,
+                padding: '6px 14px', borderRadius: 999,
+                background: linerColor, color: '#fff',
+                fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700,
+                letterSpacing: '.04em', position: 'relative',
+              }}>
+                Suggested size · Mondo {linerSize.toFixed(1)}
+              </div>
+            )}
             <img src={window.LINER_IMG[top.id]} alt={top.name}
-              style={{ position: 'relative', width: '100%', maxHeight: 200, objectFit: 'contain' }} />
+              style={{ position: 'relative', display: 'block', width: '100%', maxHeight: 200, objectFit: 'contain' }} />
           </div>
         </div>
 
 
-        {/* Size recommendation — liner sized to the shell when known, foot otherwise */}
+        {/* Thanks card + Buy button — moved to top of detail section */}
+        {answers.lead && (answers.lead.email || answers.lead.phone) && (
+          <div style={revealStyle(60)}>
+            <div style={{
+              background: linerColor, color: '#fff',
+              borderRadius: 0,
+              padding: '28px 30px 32px',
+              position: 'relative', overflow: 'hidden',
+              marginLeft: isMobile ? -16 : -36,
+              marginRight: isMobile ? -16 : -36,
+            }}>
+              <div aria-hidden style={{
+                position: 'absolute', right: -40, bottom: -40,
+                width: 220, height: 220, borderRadius: '50%',
+                background: 'rgba(255,255,255,.08)', pointerEvents: 'none',
+              }} />
+              <div style={{ ...css.eyebrow, fontSize: 11, color: 'rgba(255,255,255,.7)', fontWeight: 800 }}>
+                ✓ Best match on its way
+              </div>
+              <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 800, textTransform: 'uppercase', fontSize: 26, letterSpacing: '-.014em', lineHeight: 1.05, margin: '8px 0 6px', textWrap: 'balance' }}>
+                Thanks{answers.lead.name ? ', ' + answers.lead.name : ''}.
+              </div>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', margin: 0, lineHeight: 1.5, maxWidth: 520 }}>
+                {(() => {
+                  const sendByText = answers.lead.contactPref === 'text' && answers.lead.phone;
+                  const dest = sendByText
+                    ? `${answers.lead.dialCode || ''} ${answers.lead.phone}`.trim()
+                    : answers.lead.email;
+                  const verb = sendByText ? 'text' : 'email';
+                  return (
+                    <>We'll {verb} the <strong style={{ color: '#fff' }}>{top.name}</strong> pairing to <strong style={{ color: '#fff' }}>{dest}</strong> so you can refer back to it anytime.</>
+                  );
+                })()}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Buy button — prominent, right after the hero/thanks */}
+        <div style={{ marginTop: 18, ...revealStyle(100) }}>
+          <a
+            href={window.LINER_SHOP_URL[top.id] || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              width: '100%', boxSizing: 'border-box',
+              background: linerColor, borderColor: linerColor,
+              color: '#fff', textDecoration: 'none', textAlign: 'center',
+              fontFamily: 'Inter, sans-serif', fontWeight: 700,
+              fontSize: 16, letterSpacing: '.06em', textTransform: 'uppercase',
+              borderRadius: 6, padding: '18px 24px',
+              boxShadow: `0 6px 24px ${linerColor}66`,
+              transition: 'opacity .15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '.88'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            Buy the {top.name}
+          </a>
+        </div>
+
+
         {linerSize != null && (
           <div style={revealStyle(80)}>
             <Section title="Suggested sizing" accent={linerColor}>
@@ -1411,92 +1474,33 @@
           </Section>
         </div>
 
-        {/* Confirmation that we'll send the result to the contact captured upfront */}
-        {answers.lead && (answers.lead.email || answers.lead.phone) && (
-          <div style={revealStyle(400)}>
-            <div style={{
-              background: linerColor, color: '#fff',
-              borderRadius: 0,
-              padding: '28px 30px 32px',
-              position: 'relative', overflow: 'hidden',
-              marginLeft: isMobile ? -16 : -36,
-              marginRight: isMobile ? -16 : -36,
-              marginBottom: isMobile ? -24 : -18,
-            }}>
-              <div aria-hidden style={{
-                position: 'absolute', right: -40, bottom: -40,
-                width: 220, height: 220, borderRadius: '50%',
-                background: 'rgba(255,255,255,.08)', pointerEvents: 'none',
-              }} />
-              <div style={{ ...css.eyebrow, fontSize: 11, color: 'rgba(255,255,255,.7)', fontWeight: 800 }}>
-                ✓ Best match on its way
-              </div>
-              <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 800, textTransform: 'uppercase', fontSize: 26, letterSpacing: '-.014em', lineHeight: 1.05, margin: '8px 0 6px', textWrap: 'balance' }}>
-                Thanks{answers.lead.name ? ', ' + answers.lead.name : ''}.
-              </div>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', margin: 0, lineHeight: 1.5, maxWidth: 520 }}>
-                {(() => {
-                  const sendByText = answers.lead.contactPref === 'text' && answers.lead.phone;
-                  const dest = sendByText
-                    ? `${answers.lead.dialCode || ''} ${answers.lead.phone}`.trim()
-                    : answers.lead.email;
-                  const verb = sendByText ? 'text' : 'email';
-                  return (
-                    <>We'll {verb} the <strong style={{ color: '#fff' }}>{top.name}</strong> pairing to <strong style={{ color: '#fff' }}>{dest}</strong> so you can refer back to it anytime.</>
-                  );
-                })()}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div style={{ marginTop: 18, ...revealStyle(460) }}>
-          <a
-            href={window.LINER_SHOP_URL[top.id] || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              width: '100%', boxSizing: 'border-box',
-              background: linerColor, borderColor: linerColor,
-              color: '#fff', textDecoration: 'none', textAlign: 'center',
-              fontFamily: 'Inter, sans-serif', fontWeight: 700,
-              fontSize: 15, letterSpacing: '.06em', textTransform: 'uppercase',
-              borderRadius: 4, padding: '16px 24px',
-              boxShadow: `0 4px 18px ${linerColor}55`,
-              transition: 'opacity .15s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '.88'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-            Buy the {top.name}
-          </a>
+        <div style={{ marginTop: 10, ...revealStyle(460) }}>
           <a
             href="https://zipfit.com/collections/liners"
             target="_blank"
             rel="noopener noreferrer"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', boxSizing: 'border-box', marginTop: 10,
-              background: 'transparent', color: BLACK,
-              border: `1.5px solid rgba(39,39,39,.22)`,
+              width: '100%', boxSizing: 'border-box',
+              background: '#fff', color: BLACK,
+              border: `2px solid rgba(39,39,39,.35)`,
               textDecoration: 'none', textAlign: 'center',
-              fontFamily: 'Inter, sans-serif', fontWeight: 600,
-              fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase',
-              borderRadius: 4, padding: '13px 24px',
+              fontFamily: 'Inter, sans-serif', fontWeight: 700,
+              fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
+              borderRadius: 6, padding: '15px 24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,.08)',
               transition: 'border-color .15s, background .15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(39,39,39,.05)'; e.currentTarget.style.borderColor = 'rgba(39,39,39,.4)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(39,39,39,.22)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(39,39,39,.05)'; e.currentTarget.style.borderColor = 'rgba(39,39,39,.6)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'rgba(39,39,39,.35)'; }}
           >
             Browse All Liners
           </a>
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             {onBack && (
-              <button onClick={onBack} style={{ flex: 1, background: 'transparent', color: BLACK, border: `1.5px solid rgba(39,39,39,.18)`, borderRadius: 4, padding: '11px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>← Edit answers</button>
+              <button onClick={onBack} style={{ flex: 1, background: '#fff', color: BLACK, border: `2px solid rgba(39,39,39,.28)`, borderRadius: 6, padding: '13px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.07)' }}>← Edit answers</button>
             )}
-            <button onClick={onRestart} style={{ flex: 1, background: 'transparent', color: BLACK, border: `1.5px solid rgba(39,39,39,.18)`, borderRadius: 4, padding: '11px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer' }}>↻ Retake</button>
+            <button onClick={onRestart} style={{ flex: 1, background: '#fff', color: BLACK, border: `2px solid rgba(39,39,39,.28)`, borderRadius: 6, padding: '13px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.07)' }}>↻ Retake</button>
           </div>
         </div>
         <p style={{ fontSize: 12, color: '#a8a39d', marginTop: 14, textAlign: 'center', lineHeight: 1.5, ...revealStyle(510) }}>
