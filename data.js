@@ -71,7 +71,7 @@ var QS=[
     {ic:'✅',l:'Yes — mainly touring',d:'The majority of my ski days involve skinning up',v:'yes'},
     {ic:'⛷️',l:'No — touring occasionally',d:'I tour some days but mostly ski resort or sidecountry',v:'no'},
   ]},
-  {id:'ability',sec:'Your Skiing',lbl:'Ability Level',txt:'How would you describe your skiing ability?',hint:'Be honest — there is a perfect liner for every level.',type:'choice',scored:true,opts:[{ic:'🎿',l:'Beginner',d:'Learning the basics',v:1},{ic:'⛷️',l:'Intermediate',d:'Comfortable on most trails',v:2},{ic:'🏔️',l:'Advanced',d:'Confident in all conditions',v:3},{ic:'🏁',l:'Expert',d:'Aggressive, max performance',v:4}]},
+  {id:'ability',sec:'Your Skiing',lbl:'Ability Level',txt:'How would you describe your skiing ability?',hint:'Be honest — there is a perfect liner for every level.',type:'choice',scored:true,opts:[{l:'Beginner',d:'Learning the basics',v:1},{l:'Intermediate',d:'Comfortable on most trails',v:2},{l:'Advanced',d:'Confident in all conditions',v:3},{l:'Expert',d:'Aggressive, max performance',v:4}]},
 ];
 
 var step=0,ans={},sliders={};
