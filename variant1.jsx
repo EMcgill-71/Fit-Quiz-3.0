@@ -913,12 +913,11 @@
         const emailOk = emailFilled && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(l.email.trim());
         const phoneFilled = !!l.phone;
         const phoneOk = phoneFilled && phoneDigitsOk(l);
-        // Preferred channel must be valid; the other is optional but, if typed, must be valid.
-        const prefOk = pref === 'text' ? phoneOk : emailOk;
-        const otherOk = pref === 'text'
-          ? (!emailFilled || emailOk)
-          : (!phoneFilled || phoneOk);
-        return !!l.name && prefOk && otherOk && !!l.dataConsent;
+        // Email is always required. Phone is additionally required when pref is 'text'.
+        if (!emailOk) return false;
+        if (pref === 'text' && !phoneOk) return false;
+        if (pref !== 'text' && phoneFilled && !phoneOk) return false;
+        return !!l.name && !!l.dataConsent;
       }
       if (stage === 'boot') return !!answers.boot;
       if (stage === 'foot_len') {
@@ -1552,11 +1551,11 @@
     const cc = COUNTRY_BY_ISO[lead.country] || COUNTRY_BY_ISO[detectCountry()] || COUNTRY_BY_ISO.US;
     const pref = lead.contactPref === 'text' ? 'text' : 'email';
     const emailValid = !lead.email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email.trim());
-    // Each field is "valid" when empty UNLESS it's the required (preferred) channel.
-    const emailReq = pref === 'email';
+    // Email is always required regardless of contact preference.
+    const emailReq = true;
     const phoneReq = pref === 'text';
     const phoneValid = !lead.phone || phoneDigitsOk(lead);
-    const emailFieldError = (!emailValid) || (emailReq && !lead.email);
+    const emailFieldError = (!emailValid) || !lead.email;
     const phoneFieldError = (!phoneValid) || (phoneReq && !lead.phone);
 
     return (
