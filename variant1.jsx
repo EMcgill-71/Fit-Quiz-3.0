@@ -169,31 +169,85 @@
     return brand + '::' + fam.toLowerCase().replace(/\s+/g, '');
   }
 
+  // First word of the normalised family name — defines the top-level "line" grouping.
+  // e.g. "Hawx Ultra XTD" → "Hawx", "Backland Carbon" → "Backland"
+  function topFamilyOf(boot) {
+    const fam = familyOf(boot);
+    return fam.trim().split(/\s+/)[0] || fam;
+  }
+
   function BootPicker({ value, onChange }) {
     const isMobile = useIsMobile();
     const [pBrand, setPBrand] = useState(value?.b || '');
+    const [pTopFamily, setPTopFamily] = useState('');
     const [pFamily, setPFamily] = useState('');
     const [pFlex, setPFlex] = useState('');
     const [query, setQuery] = useState('');
 
     const ql = query.trim().toLowerCase();
 
-    // Group BOOTS into model families. Each family entry carries its available
-    // flex numbers, volumes, lasts, and walk-mode flag so we can render a
-    // single row per family in the list.
-    const families = useMemo(() => {
+    // ── Line dropdown options (first word of model, unique per brand) ──────
+    const topFamilyOptions = useMemo(() => {
+      if (!pBrand) return [];
+      const seen = new Set();
+      window.BOOTS.forEach((b) => {
+        if (b.b !== pBrand) return;
+        seen.add(topFamilyOf(b));
+      });
+      return Array.from(seen).sort();
+    }, [pBrand]);
+
+    // ── Model dropdown options (full family names within selected line) ─────
+    const subFamilyOptions = useMemo(() => {
+      if (!pBrand || !pTopFamily) return [];
+      const seen = {};
+      window.BOOTS.forEach((b) => {
+        if (b.b !== pBrand || topFamilyOf(b) !== pTopFamily) return;
+        const fam = familyOf(b);
+        const key = famKey(pBrand, fam);
+        if (!seen[key]) seen[key] = fam;
+      });
+      return Object.values(seen).sort();
+    }, [pBrand, pTopFamily]);
+
+    // ── Top-family list rows (brand selected, no line picked yet) ──────────
+    const topFamilyList = useMemo(() => {
       let list = window.BOOTS.slice();
       if (pBrand) list = list.filter((b) => b.b === pBrand);
-      if (ql) list = list.filter((b) => {
-        const fam = familyOf(b);
-        return `${b.b} ${b.m} ${fam}`.toLowerCase().includes(ql);
+      if (ql) list = list.filter((b) => `${b.b} ${b.m}`.toLowerCase().includes(ql));
+      const map = {};
+      list.forEach((b) => {
+        const top = topFamilyOf(b);
+        const key = (pBrand || b.b) + '::top::' + top.toLowerCase();
+        if (!map[key]) map[key] = { b: b.b, top, flexes: {}, volumes: {}, lasts: {}, walk: false };
+        if (b.f) map[key].flexes[b.f] = 1;
+        if (b.v && b.v !== 'nan') map[key].volumes[b.v] = 1;
+        if (b.l) map[key].lasts[b.l] = 1;
+        if (b.w) map[key].walk = true;
       });
+      return Object.values(map)
+        .map((m) => ({
+          b: m.b, top: m.top,
+          flexes: Object.keys(m.flexes).map(Number).sort((a, c) => a - c),
+          volumes: Object.keys(m.volumes),
+          lasts: Object.keys(m.lasts).map(Number).sort((a, c) => a - c),
+          walk: m.walk,
+        }))
+        .sort((a, b) => a.b.localeCompare(b.b) || a.top.localeCompare(b.top));
+    }, [pBrand, ql]);
+
+    // ── Sub-family list rows (line selected, no model picked yet) ──────────
+    const subFamilyList = useMemo(() => {
+      if (!pTopFamily) return [];
+      let list = window.BOOTS.filter((b) =>
+        (!pBrand || b.b === pBrand) && topFamilyOf(b) === pTopFamily
+      );
+      if (ql) list = list.filter((b) => `${b.b} ${b.m}`.toLowerCase().includes(ql));
       const map = {};
       list.forEach((b) => {
         const fam = familyOf(b);
         const key = famKey(b.b, fam);
         if (!map[key]) map[key] = { b: b.b, fam, flexes: {}, volumes: {}, lasts: {}, walk: false };
-        // Prefer the more title-cased display name when merging duplicates
         else {
           const titleScore = (s) => s.split(/\s+/).filter((w) => /^[A-Z][a-z]/.test(w)).length;
           if (titleScore(fam) > titleScore(map[key].fam)) map[key].fam = fam;
@@ -205,42 +259,16 @@
       });
       return Object.values(map)
         .map((m) => ({
-          b: m.b,
-          fam: m.fam,
+          b: m.b, fam: m.fam,
           flexes: Object.keys(m.flexes).map(Number).sort((a, c) => a - c),
           volumes: Object.keys(m.volumes),
           lasts: Object.keys(m.lasts).map(Number).sort((a, c) => a - c),
           walk: m.walk,
         }))
-        .sort((a, b) => a.b.localeCompare(b.b) || a.fam.localeCompare(b.fam));
-    }, [pBrand, ql]);
+        .sort((a, b) => a.fam.localeCompare(b.fam));
+    }, [pBrand, pTopFamily, ql]);
 
-    // Selected boot confirmation card (computed below all hooks; render decision lives near return)
-
-    // Family options for the Model dropdown — same dedup logic as the families list.
-    const familyOptions = useMemo(() => {
-      if (!pBrand) return [];
-      const seen = {};
-      window.BOOTS.forEach((b) => {
-        if (b.b !== pBrand) return;
-        const fam = familyOf(b);
-        const key = famKey(pBrand, fam);
-        if (!seen[key]) seen[key] = fam;
-      });
-      let list = Object.values(seen);
-      if (ql) list = list.filter((fam) => `${pBrand} ${fam}`.toLowerCase().includes(ql));
-      return list.sort();
-    }, [pBrand, ql]);
-
-    // Only show the family list once a brand is picked or there's a query —
-    // rendering hundreds of rows blind is overwhelming.
-    const narrowed = !!(pBrand || ql);
-    const visible = narrowed ? families : [];
-
-    // After family + flex are chosen, surface year chips if there are multiple.
-    // Compute family info from BOOTS directly (not from the search-filtered
-    // `families` list) so the flex chips still show even if the user's query
-    // would have hidden this family from the row list.
+    // ── Individual variants for selected sub-family ────────────────────────
     const familyVariants = (pFamily && pBrand)
       ? window.BOOTS.filter((b) => b.b === pBrand && famKey(b.b, familyOf(b)) === famKey(pBrand, pFamily))
       : [];
@@ -249,14 +277,10 @@
       familyVariants.forEach((b) => { if (b.f) seen[b.f] = 1; });
       return Object.keys(seen).map(Number).sort((a, c) => a - c);
     })();
-    const familyHasFlex = flexesForFamily.length > 0;
-    const yearMatches = pFamily
-      ? (familyHasFlex
-          ? (pFlex ? familyVariants.filter((b) => String(b.f) === String(pFlex)) : [])
-          : familyVariants)
-      : [];
 
-    // If a family has only one flex, accept it immediately.
+    const narrowed = !!(pBrand || ql);
+
+    // Auto-select flex when only one option exists for the chosen model
     useEffect(() => {
       if (value) return;
       if (pFamily && flexesForFamily.length === 1 && !pFlex) {
@@ -264,13 +288,7 @@
       }
     }, [value, pFamily, flexesForFamily, pFlex]);
 
-    // If flex selection narrows to a single boot, confirm it — but only after
-    // the user has explicitly picked a flex chip (not on family auto-set).
-    // Removed for new variant-list UX: the user always clicks a row to confirm,
-    // so we don't surprise them by skipping ahead.
-
-    // Selected boot confirmation card — must render AFTER all hooks above so hook
-    // order stays stable across renders (toggling between picker and confirmation).
+    // Selected boot confirmation card — must render AFTER all hooks above.
     if (value) {
       const last = value.l || 0;
       const lastNote = last === 0 ? '' : last <= 98 ? 'Low volume' : last <= 100 ? 'Medium volume' : last <= 102 ? 'Mid-high volume' : 'High volume';
@@ -291,7 +309,7 @@
               <div style={{ fontFamily: 'Gilroy, Outfit, sans-serif', fontWeight: 800, fontSize: 26, lineHeight: 1.12, letterSpacing: '-.014em', marginTop: 8, textWrap: 'balance', color: BLACK }}>{value.m}</div>
               <div style={{ fontSize: 14, color: '#7A7670', marginTop: 8 }}>{value.b} · {value.y}{value.w ? ' · Walk mode' : ''}</div>
             </div>
-            <button onClick={() => { setPBrand(''); setPFamily(''); setPFlex(''); setQuery(''); onChange(null); }}
+            <button onClick={() => { setPBrand(''); setPTopFamily(''); setPFamily(''); setPFlex(''); setQuery(''); onChange(null); }}
               style={{ background: 'transparent', border: '1px solid rgba(39,39,39,.18)', color: '#7A7670', padding: '6px 12px', borderRadius: 4, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Gilroy, Inter, sans-serif', flexShrink: 0 }}>
               Change
             </button>
@@ -335,12 +353,6 @@
       );
     }
 
-    const pickFamily = (b, fam) => {
-      setPBrand(b);
-      setPFamily(fam);
-      setPFlex('');
-    };
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Search bar */}
@@ -365,16 +377,25 @@
           />
         </div>
 
-        {/* Brand + model filter row */}
+        {/* Row 1: Brand + Line (first-word family) */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.4fr', gap: 10 }}>
-          <Select label="Brand" value={pBrand} onChange={(v) => { setPBrand(v); setPFamily(''); setPFlex(''); }} options={window.BRANDS} placeholder="Any brand" />
-          <Select label="Model" value={pFamily}
-            onChange={(v) => { setPFamily(v); setPFlex(''); }}
-            options={familyOptions.map((m) => ({ key: m, label: m }))}
-            disabled={!pBrand} placeholder={pBrand ? 'Any model' : '—'} />
+          <Select label="Brand" value={pBrand} onChange={(v) => { setPBrand(v); setPTopFamily(''); setPFamily(''); setPFlex(''); }} options={window.BRANDS} placeholder="Any brand" />
+          <Select label="Line" value={pTopFamily}
+            onChange={(v) => { setPTopFamily(v); setPFamily(''); setPFlex(''); }}
+            options={topFamilyOptions}
+            disabled={!pBrand} placeholder={pBrand ? 'Select a line…' : '—'} />
         </div>
 
-        {/* Flex chips (only when a family with multiple flex options is picked) */}
+        {/* Row 2: Model (sub-family within the selected line) */}
+        {pTopFamily && (
+          <Select label="Model" sublabel="refine within line"
+            value={pFamily}
+            onChange={(v) => { setPFamily(v); setPFlex(''); }}
+            options={subFamilyOptions.map((m) => ({ key: m, label: m }))}
+            placeholder="Any model in this line" />
+        )}
+
+        {/* Flex chips (only when a model with multiple flex options is picked) */}
         {pFamily && flexesForFamily.length > 1 && (
           <div style={{ background: WARM, border: `1.5px solid ${BLACK}`, borderRadius: 8, padding: '14px 16px' }}>
             <div style={{ ...css.eyebrow, fontSize: 11, marginBottom: 8 }}>Pick a flex for {pFamily}</div>
@@ -398,17 +419,15 @@
           </div>
         )}
 
-        {/* Family list — collapses to family rows when nothing is selected,
-            drills into individual variants once a family is picked. */}
+        {/* Main list panel — three levels: top-family → sub-family → variants */}
         <div style={{ background: '#fff', border: '1px solid rgba(39,39,39,.1)', borderRadius: 10 }}>
           {!narrowed ? (
             <div style={{ padding: '36px 24px', textAlign: 'center', fontSize: 15, color: '#7A7670', lineHeight: 1.55 }}>
-              <div style={{ ...css.eyebrow, fontSize: 11, color: BLACK, marginBottom: 8 }}>{families.length} model families in our database</div>
+              <div style={{ ...css.eyebrow, fontSize: 11, color: BLACK, marginBottom: 8 }}>{window.BOOTS.length} boots across {window.BRANDS.length} brands in our database</div>
               Pick a brand above or search to see matching shells.
             </div>
           ) : pFamily ? (
-            // Variant-level list: every individual boot in the selected family,
-            // sorted by flex then year (newest first). Clicking a row confirms.
+            // Level 3: individual variants in selected model
             (() => {
               const variants = familyVariants
                 .filter((b) => !pFlex || String(b.f) === String(pFlex))
@@ -454,42 +473,83 @@
                 </>
               );
             })()
-          ) : visible.length === 0 ? (
+          ) : pTopFamily ? (
+            // Level 2: sub-families within selected line
+            subFamilyList.length === 0 ? (
+              <div style={{ padding: '24px 20px', textAlign: 'center', fontSize: 14, color: '#7A7670' }}>No models found for {pTopFamily}.</div>
+            ) : (
+              <>
+                <div style={{ ...css.eyebrow, fontSize: 11, padding: '12px 18px 8px', background: 'rgba(39,39,39,.02)', borderBottom: '1px solid rgba(39,39,39,.06)', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{pBrand} {pTopFamily} · {subFamilyList.length} model{subFamilyList.length === 1 ? '' : 's'}</span>
+                  <span style={{ color: 'rgba(39,39,39,.3)' }}>last · volume · flex</span>
+                </div>
+                {subFamilyList.map((f) => {
+                  const volColor = VOL_COLOR[f.volumes[0]] || BLACK;
+                  return (
+                    <button key={f.b + '::' + f.fam} onClick={() => { setPFamily(f.fam); setPFlex(''); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        width: '100%', padding: '14px 18px',
+                        background: 'transparent', border: 0,
+                        borderBottom: '1px solid rgba(39,39,39,.06)',
+                        textAlign: 'left', cursor: 'pointer',
+                        fontFamily: 'Gilroy, Inter, sans-serif',
+                        transition: 'background .12s',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = WARM; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ width: 5, height: 34, background: volColor, borderRadius: 2, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: BLACK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.fam}</div>
+                        <div style={{ fontSize: 12.5, color: '#7A7670', marginTop: 2 }}>{f.b}{f.walk ? ' · Walk' : ''}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
+                        {f.lasts.length > 0 && <ShellTag>{f.lasts.length === 1 ? f.lasts[0] : `${f.lasts[0]}–${f.lasts[f.lasts.length - 1]}`}</ShellTag>}
+                        {f.volumes.length > 0 && <ShellTag color={volColor}>{f.volumes.join('/')}</ShellTag>}
+                        {f.flexes.length > 0 && <ShellTag>{f.flexes.length === 1 ? `Flex ${f.flexes[0]}` : `${f.flexes[0]}–${f.flexes[f.flexes.length - 1]}`}</ShellTag>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </>
+            )
+          ) : topFamilyList.length === 0 ? (
             <div style={{ padding: '24px 20px', textAlign: 'center', fontSize: 14, color: '#7A7670' }}>
               No shells match. Try a different brand or clear the search.
             </div>
           ) : (
+            // Level 1: top-family (first-word) rows
             <>
               <div style={{ ...css.eyebrow, fontSize: 11, padding: '12px 18px 8px', background: 'rgba(39,39,39,.02)', borderBottom: '1px solid rgba(39,39,39,.06)', display: 'flex', justifyContent: 'space-between', position: 'sticky', top: 0 }}>
-                <span>{visible.length} model{visible.length === 1 ? '' : 's'}</span>
-                <span style={{ color: 'rgba(39,39,39,.3)' }}>last · volume · flex options</span>
+                <span>{topFamilyList.length} line{topFamilyList.length === 1 ? '' : 's'}</span>
+                <span style={{ color: 'rgba(39,39,39,.3)' }}>last · volume · flex range</span>
               </div>
-              {visible.map((f) => {
+              {topFamilyList.map((f) => {
                 const volColor = VOL_COLOR[f.volumes[0]] || BLACK;
-                const isActive = pBrand === f.b && pFamily === f.fam;
                 return (
-                  <button key={f.b + '::' + f.fam} onClick={() => pickFamily(f.b, f.fam)}
+                  <button key={f.b + '::top::' + f.top} onClick={() => { setPTopFamily(f.top); setPFamily(''); setPFlex(''); }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14,
                       width: '100%', padding: '14px 18px',
-                      background: isActive ? WARM : 'transparent', border: 0,
+                      background: 'transparent', border: 0,
                       borderBottom: '1px solid rgba(39,39,39,.06)',
                       textAlign: 'left', cursor: 'pointer',
                       fontFamily: 'Gilroy, Inter, sans-serif',
                       transition: 'background .12s',
                     }}
-                    onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = WARM; }}
-                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = WARM; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                   >
                     <div style={{ width: 5, height: 34, background: volColor, borderRadius: 2, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: BLACK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.fam}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: BLACK }}>{f.top}</div>
                       <div style={{ fontSize: 12.5, color: '#7A7670', marginTop: 2 }}>{f.b}{f.walk ? ' · Walk' : ''}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
                       {f.lasts.length > 0 && <ShellTag>{f.lasts.length === 1 ? f.lasts[0] : `${f.lasts[0]}–${f.lasts[f.lasts.length - 1]}`}</ShellTag>}
                       {f.volumes.length > 0 && <ShellTag color={volColor}>{f.volumes.join('/')}</ShellTag>}
-                      {f.flexes.length > 0 && <ShellTag>{f.flexes.length === 1 ? `Flex ${f.flexes[0]}` : `${f.flexes[0]}–${f.flexes[f.flexes.length - 1]} · ${f.flexes.length}`}</ShellTag>}
+                      {f.flexes.length > 0 && <ShellTag>{f.flexes.length === 1 ? `Flex ${f.flexes[0]}` : `${f.flexes[0]}–${f.flexes[f.flexes.length - 1]}`}</ShellTag>}
                     </div>
                   </button>
                 );
